@@ -169,10 +169,14 @@ class Database:
     @staticmethod
     def _connect(target: str) -> sqlite3.Connection:
         conn = sqlite3.connect(target, check_same_thread=False, isolation_level=None, timeout=10)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        if target != ":memory:":
-            conn.execute("PRAGMA journal_mode = WAL")
+        try:
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys = ON")
+            if target != ":memory:":
+                conn.execute("PRAGMA journal_mode = WAL")  # fails first on a non-database file
+        except BaseException:
+            conn.close()  # never leak a handle: Windows could not rename/backup the file
+            raise
         return conn
 
     @staticmethod
