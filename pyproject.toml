@@ -1,0 +1,14 @@
+[project]
+name = "pokepilot-desktop"
+version = "0.1.0"
+description = "Windows desktop controller for an existing Android emulator (ADB + scrcpy)."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyside6"
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
