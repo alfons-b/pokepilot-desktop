@@ -66,6 +66,10 @@ class CommandResult:
 
 
 CommandRunner = Callable[[Sequence[str], float], CommandResult]
+# Returns (returncode, stdout bytes, stderr text) for binary output such as screenshots.
+BinaryRunner = Callable[[Sequence[str], float], tuple[int, bytes, str]]
+
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
 def _no_window_flags() -> int:
@@ -100,6 +104,26 @@ def subprocess_runner(args: Sequence[str], timeout: float) -> CommandResult:
     return CommandResult(tuple(argv), proc.returncode, proc.stdout or "", proc.stderr or "")
 
 
+def subprocess_binary_runner(args: Sequence[str], timeout: float) -> tuple[int, bytes, str]:
+    argv = [str(a) for a in args]
+    try:
+        proc = subprocess.run(
+            argv,
+            capture_output=True,
+            timeout=timeout,
+            stdin=subprocess.DEVNULL,
+            creationflags=_no_window_flags(),
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        raise AdbNotFoundError(f"Executable not found: {argv[0]}") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise AdbTimeoutError(f"Command timed out after {timeout:.0f}s: {' '.join(argv[1:])}") from exc
+    except OSError as exc:
+        raise AdbError(f"Failed to run {argv[0]}: {exc}") from exc
+    return proc.returncode, proc.stdout or b"", (proc.stderr or b"").decode("utf-8", "replace")
+
+
 def validate_address(address: str) -> str:
     """Validate a ``host:port`` address for ``adb connect``. Returns the stripped address."""
     address = address.strip()
@@ -121,9 +145,11 @@ class AdbClient:
         adb_path: str,
         runner: CommandRunner = subprocess_runner,
         timeout: float = 10.0,
+        binary_runner: BinaryRunner = subprocess_binary_runner,
     ) -> None:
         self.adb_path = (adb_path or "").strip()
         self._runner = runner
+        self._binary_runner = binary_runner
         self.timeout = timeout
 
     # ------------------------------------------------------------------ core
@@ -211,3 +237,47 @@ class AdbClient:
             override_resolution=override,
             qemu_flag=props.get("ro.kernel.qemu") == "1" or props.get("ro.boot.qemu") == "1",
         )
+
+    # ---------------------------------------------------------- screen/input
+    def screencap(self, serial: str) -> bytes:
+        """Capture the device screen as PNG bytes (``adb exec-out screencap -p``)."""
+        if not self.adb_path:
+            raise AdbNotConfiguredError("ADB path is not configured. Set it in Settings.")
+        if not serial:
+            raise ValueError("A device serial is required.")
+        argv = [self.adb_path, "-s", serial, "exec-out", "screencap", "-p"]
+        code, data, err = self._binary_runner(argv, max(self.timeout, 15.0))
+        if code != 0:
+            raise AdbCommandError(f"screencap failed on {serial}: {err.strip() or f'exit code {code}'}")
+        if not data.startswith(PNG_SIGNATURE):
+            # Some old devices translate \n to \r\n on the shell transport.
+            fixed = data.replace(b"\r\n", b"\n")
+            if fixed.startswith(PNG_SIGNATURE):
+                return fixed
+            raise AdbCommandError(f"screencap on {serial} did not return a PNG image ({len(data)} bytes).")
+        return data
+
+    def tap(self, serial: str, x: int, y: int) -> None:
+        self._input(serial, ["tap", str(int(x)), str(int(y))])
+
+    def swipe(self, serial: str, x1: int, y1: int, x2: int, y2: int, duration_ms: int = 300) -> None:
+        self._input(serial, ["swipe", *(str(int(v)) for v in (x1, y1, x2, y2, duration_ms))])
+
+    def keyevent(self, serial: str, keycode: int) -> None:
+        self._input(serial, ["keyevent", str(int(keycode))])
+
+    def get_state(self, serial: str) -> str:
+        """Return the transport state ('device', 'offline', ...) or raise if the device is unknown."""
+        return self.run(["get-state"], serial=serial).stdout.strip()
+
+    def _input(self, serial: str, args: list[str]) -> None:
+        if not serial:
+            raise ValueError("A device serial is required.")
+        res = self.run(["shell", "input", *args], serial=serial)
+        # 'input' prints usage/errors on stdout with exit code 0 on some Android versions.
+        if "error" in res.output.lower() or "exception" in res.output.lower():
+            raise AdbCommandError(f"input {' '.join(args)} failed: {res.output}", res)
+
+
+KEYCODE_BACK = 4
+KEYCODE_HOME = 3

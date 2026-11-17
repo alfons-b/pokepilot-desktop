@@ -22,7 +22,7 @@ pip install -r requirements.txt
 | PySide6 | GUI toolkit (Qt 6) | `pip` (requirements.txt) |
 | pytest, pytest-qt, ruff | Tests and linting (developers only) | `pip install -r requirements-dev.txt` |
 | adb.exe | Talks to the emulator | You. See [ADB_SETUP.md](ADB_SETUP.md) |
-| scrcpy | Screen mirroring (Phase 3) | You. Guide added in Phase 3 |
+| scrcpy | Screen mirroring | You. See [SCRCPY_SETUP.md](SCRCPY_SETUP.md) |
 
 ## 4. Start the application
 ```powershell

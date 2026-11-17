@@ -23,11 +23,13 @@ from app.core.app_controller import AppController
 from app.core.config import ConfigManager
 from app.core.device_controller import AdbStatus, DeviceController
 from app.core.task_runner import TaskRunner
+from app.screen.mirror_controller import MirrorController
 from app.ui.log_bridge import QtLogHandler
 from app.ui.pages.activity_page import ActivityPage
 from app.ui.pages.dashboard_page import DashboardPage
 from app.ui.pages.emulator_page import EmulatorPage
 from app.ui.pages.planned_page import PLANNED_PAGES, PlannedPage
+from app.ui.pages.screen_page import ScreenPage
 from app.ui.pages.settings_page import SettingsPage
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,7 @@ class MainWindow(QMainWindow):
         self.runner = runner
         self.config_manager = config_manager
         self.apps = apps or AppController(controller, runner, self)
+        self.mirror = MirrorController(controller, runner, self)
         self.setWindowTitle(f"{__app_name__} {__version__}")
         self.resize(1200, 780)
         self.setMinimumSize(960, 640)
@@ -86,15 +89,18 @@ class MainWindow(QMainWindow):
         self.dashboard_page = DashboardPage(controller, log_handler)
         self.emulator_page = EmulatorPage(controller, self.apps)
         self.activity_page = ActivityPage(log_handler)
-        self.settings_page = SettingsPage(controller, config_manager)
+        self.settings_page = SettingsPage(controller, config_manager, self.mirror)
+        self.screen_page = ScreenPage(controller, self.mirror)
+        self.dashboard_page.attach_mirror(self.mirror)
         self.pages: dict[str, QWidget] = {
             "Dashboard": self.dashboard_page,
             "Emulator Manager": self.emulator_page,
             "Activity Monitor": self.activity_page,
             "Settings": self.settings_page,
+            "Screen Monitor": self.screen_page,
         }
         for name, (phase, summary, feats) in PLANNED_PAGES.items():
-            self.pages[name] = PlannedPage(name, phase, summary, feats)
+            self.pages.setdefault(name, PlannedPage(name, phase, summary, feats))
         for name in NAV_ITEMS:
             self.stack.addWidget(self.pages[name])
 
@@ -179,6 +185,7 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
         self.controller.shutdown()
+        self.mirror.shutdown()
         cfg = self.controller.config
         cfg.window_geometry = bytes(self.saveGeometry().toBase64()).decode("ascii")
         try:

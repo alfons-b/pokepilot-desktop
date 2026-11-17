@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.3.0] - 2026-11-17 - Phase 3: scrcpy screen mirroring
+
+### Added
+- **Screen Monitor** page: start, stop and restart scrcpy for the selected device; live scrcpy output; status
+  (Starting, Running, Stopping, Failed) based on scrcpy's own output.
+- scrcpy options: max size, frame rate, bitrate, fullscreen, always-on-top, keep awake, view-only (no
+  input), UHID keyboard, auto-restart. Arguments adapt to the installed scrcpy version (1.x or 2.x+).
+- Process supervision: graceful close followed by a kill after 3 s; automatic restart after a crash (at most 3 in
+  2 min); mirroring stops when the selected device changes; scrcpy is stopped when PokePilot exits.
+- scrcpy runs with `ADB=<configured adb>` so only one adb version is in use.
+- Screenshot capture (`adb exec-out screencap -p`) with PNG validation, a preview, and a folder shortcut.
+- Settings: scrcpy Auto-detect (PATH, winget, scoop, `C:\scrcpy`) and Test.
+- ADB client: `tap`, `swipe`, `keyevent`, `get-state` and `screencap`, used by later phases.
+- Dashboard mirroring card shows live state.
+- `docs/SCRCPY_SETUP.md`. 23 new tests (185 total), including a fake scrcpy executable.
+
 ## [0.2.0] - 2026-11-17 - Phase 2: devices, reconnection, BlueStacks instances, app launcher
 
 ### Added

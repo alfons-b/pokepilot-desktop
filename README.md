@@ -4,9 +4,9 @@ A Windows desktop controller for an **existing** Android emulator, built with Py
 PokePilot talks to the emulator only through **ADB** (and, from Phase 3, **scrcpy**). It does not
 include or modify an emulator, does not modify any APK, and does not touch game network traffic.
 
-> **Status: Phase 2 of 8 complete (v0.2.0).** The application shell, ADB detection, device
-> management with automatic reconnection, BlueStacks instance discovery and the app launcher are
-> working. The other modules are listed in the app as scheduled for later phases. See
+> **Status: Phase 3 of 8 complete (v0.3.0).** The application shell, ADB detection, device
+> management with automatic reconnection, BlueStacks instance discovery, the app launcher and scrcpy
+> screen mirroring are working. The other modules are listed in the app as scheduled for later phases. See
 > [CHANGELOG.md](CHANGELOG.md).
 
 ## What works today
@@ -18,6 +18,7 @@ include or modify an emulator, does not modify any APK, and does not touch game 
 | Emulator Manager: Devices | Device scan (`adb devices -l`), multi-device table, device selection, TCP/IP connect, manual and automatic reconnection, restart ADB server, launch your emulator, read Android version, API level and screen resolution |
 | Emulator Manager: Applications | List installed apps, choose a target app (for example your PGSharp install), launch it and confirm its process is running, check running state, force stop |
 | Emulator Manager: Emulator Instances | Finds BlueStacks 5 instances and their ADB ports in `bluestacks.conf`; connect, launch or set as default |
+| Screen Monitor | scrcpy mirroring with mouse and keyboard control, options (size, FPS, bitrate, fullscreen, view-only), crash auto-restart, screenshots |
 | Settings | ADB path (browse / auto-detect / test), command timeout, auto-refresh, emulator executable and arguments, scrcpy path (stored for Phase 3), log level |
 | Activity Monitor | Live, filterable application log; opens the log folder |
 | Reliability | All ADB work runs on background threads; JSON config is validated, saved atomically, and backed up and reset if it is corrupted |
@@ -100,7 +101,8 @@ Set the `POKEPILOT_HOME` environment variable to override the location.
 * [BlueStacks setup](docs/BLUESTACKS_SETUP.md)
 * [User manual](docs/USER_MANUAL.md)
 * [Troubleshooting](docs/TROUBLESHOOTING.md)
-* scrcpy setup, PGSharp setup, automation profiles and build instructions are added in their phases.
+* [scrcpy setup](docs/SCRCPY_SETUP.md)
+* PGSharp setup, automation profiles and build instructions are added in their phases.
 
 ## Scope and responsible use
 

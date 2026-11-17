@@ -21,6 +21,9 @@ MAX_RECENT_ADDRESSES = 10
 NUMERIC_RANGES: dict[str, tuple[float, float]] = {
     "adb_command_timeout_s": (1.0, 120.0),
     "auto_refresh_interval_s": (2, 300),
+    "scrcpy_max_size": (0, 4096),
+    "scrcpy_max_fps": (1, 120),
+    "scrcpy_bitrate_mbps": (1, 100),
 }
 
 
@@ -41,6 +44,15 @@ class AppConfig:
     emulator_path: str = ""
     emulator_args: str = ""
     scrcpy_path: str = ""
+    scrcpy_max_size: int = 1280
+    scrcpy_max_fps: int = 30
+    scrcpy_bitrate_mbps: int = 8
+    scrcpy_fullscreen: bool = False
+    scrcpy_always_on_top: bool = False
+    scrcpy_stay_awake: bool = True
+    scrcpy_view_only: bool = False
+    scrcpy_uhid_keyboard: bool = False
+    scrcpy_auto_restart: bool = True
     log_level: str = "INFO"
     window_geometry: str = ""
 

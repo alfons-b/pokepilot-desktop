@@ -24,6 +24,7 @@ from app.core.config import NUMERIC_RANGES, VALID_LOG_LEVELS, AppConfig, ConfigM
 from app.core.device_controller import DeviceController
 from app.core.logging_setup import set_log_level
 from app.emulator.emulator_launcher import EmulatorLaunchError, split_args
+from app.screen.mirror_controller import MirrorController
 from app.ui.widgets.common import Banner, Page, hbox, make_button
 
 _EXE_FILTER = "Executables (*.exe);;All files (*)" if sys.platform == "win32" else "All files (*)"
@@ -33,7 +34,11 @@ class SettingsPage(Page):
     settings_saved = Signal()
 
     def __init__(
-        self, controller: DeviceController, config_manager: ConfigManager, parent: QWidget | None = None
+        self,
+        controller: DeviceController,
+        config_manager: ConfigManager,
+        mirror: MirrorController | None = None,
+        parent: QWidget | None = None,
     ) -> None:
         super().__init__("Settings", "Paths to external tools and application behaviour.", parent)
         self._controller = controller
@@ -113,11 +118,23 @@ class SettingsPage(Page):
         # scrcpy
         scrcpy_box = QGroupBox("Screen Mirroring (scrcpy)")
         self.scrcpy_path_edit = QLineEdit()
-        self.scrcpy_path_edit.setPlaceholderText(r"C:\scrcpy\scrcpy.exe  (used from Phase 3)")
+        self.scrcpy_path_edit.setPlaceholderText(r"C:\scrcpy\scrcpy.exe")
         self.scrcpy_browse_btn = make_button("Browse...")
         self.scrcpy_browse_btn.clicked.connect(lambda: self._browse(self.scrcpy_path_edit, "Select scrcpy executable"))
+        self.scrcpy_detect_btn = make_button("Auto-detect")
+        self.scrcpy_test_btn = make_button("Test")
         f = QFormLayout(scrcpy_box)
         f.addRow("scrcpy executable:", hbox(self.scrcpy_path_edit, self.scrcpy_browse_btn, stretch_end=False))
+        f.addRow("", hbox(self.scrcpy_detect_btn, self.scrcpy_test_btn))
+        if mirror is not None:
+            self.scrcpy_detect_btn.clicked.connect(mirror.detect_scrcpy)
+            self.scrcpy_test_btn.clicked.connect(lambda: mirror.test_scrcpy(self.scrcpy_path_edit.text().strip()))
+            mirror.scrcpy_path_changed.connect(self.scrcpy_path_edit.setText)
+            mirror.operation_succeeded.connect(self._on_success)
+            mirror.operation_failed.connect(self._on_failure)
+        else:
+            self.scrcpy_detect_btn.setEnabled(False)
+            self.scrcpy_test_btn.setEnabled(False)
         col.addWidget(scrcpy_box)
 
         # Logging
@@ -220,12 +237,12 @@ class SettingsPage(Page):
     # ------------------------------------------------------------ signals
     @Slot(str, str)
     def _on_success(self, op: str, message: str) -> None:
-        if op in ("Test ADB", "Auto-detect ADB"):
+        if op in ("Test ADB", "Auto-detect ADB", "Test scrcpy", "Auto-detect scrcpy"):
             self.banner.show_message("ok", message)
 
     @Slot(str, str)
     def _on_failure(self, op: str, message: str) -> None:
-        if op in ("Test ADB", "Auto-detect ADB", "Save settings"):
+        if op in ("Test ADB", "Auto-detect ADB", "Save settings", "Test scrcpy", "Auto-detect scrcpy"):
             self.banner.show_message("error", f"{op} failed: {message}")
 
     @Slot(bool)

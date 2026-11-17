@@ -22,12 +22,6 @@ class PlannedPage(Page):
 
 
 PLANNED_PAGES: dict[str, tuple[int, str, list[str]]] = {
-    "Screen Monitor": (
-        3,
-        "Mirror and control the emulator screen with scrcpy.",
-        ["Start / stop mirroring", "Fullscreen", "Mouse and keyboard control", "Screenshots",
-         "Resolution and FPS settings", "Process monitoring and restart"],
-    ),
     "PGSharp Controller": (
         4,
         "Launch PGSharp and map its user-facing controls.",

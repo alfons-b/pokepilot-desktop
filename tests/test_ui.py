@@ -38,6 +38,7 @@ def make_app(qtbot, monkeypatch):
     yield factory
     for ctx in contexts:
         ctx.controller.shutdown()
+        ctx.window.mirror.shutdown()
         ctx.runner.wait_for_done(3000)
 
 
@@ -222,3 +223,28 @@ def test_settings_phase2_fields_persist(make_app):
     saved = ctx.config_manager.load().config
     assert saved.auto_reconnect_enabled is False
     assert saved.bluestacks_conf_path == "D:/BlueStacks/bluestacks.conf"
+
+
+# ------------------------------------------------------------------ Phase 3
+def test_screen_page_options_persist_and_buttons(make_app):
+    ctx = make_app()
+    w = ctx.window
+    w.navigate_to("Screen Monitor")
+    page = w.screen_page
+    assert w.stack.currentWidget() is page
+    page.fps_spin.setValue(45)
+    page.view_only_check.setChecked(True)
+    saved = ctx.config_manager.load().config
+    assert saved.scrcpy_max_fps == 45 and saved.scrcpy_view_only is True
+    assert page.start_btn.isEnabled() and not page.stop_btn.isEnabled()
+    assert ctx.window.dashboard_page.mirror_card.badge.text_value == "Not running"
+
+
+def test_screen_page_start_without_scrcpy_shows_error(qtbot, make_app):
+    ctx = make_app(standard_runner(DEVICES_ONE))
+    ctx.controller.refresh_devices()
+    qtbot.waitUntil(lambda: ctx.controller.selected_device is not None, timeout=3000)
+    page = ctx.window.screen_page
+    page.start_btn.click()
+    assert page.banner.property("level") == "error"
+    assert "scrcpy" in page.banner.text()

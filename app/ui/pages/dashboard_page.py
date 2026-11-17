@@ -31,7 +31,7 @@ class DashboardPage(Page):
         self.session_card = StatusCard("Automation Session")
         # Honest initial states: nothing has been checked for these modules yet.
         self.pgsharp_card.set_status("idle", "Not checked", "PGSharp detection arrives in Phase 4.")
-        self.mirror_card.set_status("idle", "Not running", "scrcpy integration arrives in Phase 3.")
+        self.mirror_card.set_status("idle", "Not running", "")
         self.session_card.set_status("idle", "Idle", "Profile: none")
         for i, card in enumerate(
             [self.adb_card, self.device_card, self.pgsharp_card, self.mirror_card, self.session_card]
@@ -80,6 +80,17 @@ class DashboardPage(Page):
         controller.busy_changed.connect(lambda busy: self.refresh_btn.setEnabled(not busy))
         self._on_adb_status(*controller.adb_status)
         self._refresh_device_card()
+
+    def attach_mirror(self, mirror) -> None:  # noqa: ANN001 - MirrorController
+        from app.screen.mirror_controller import MirrorState
+
+        levels = {MirrorState.RUNNING: "ok", MirrorState.FAILED: "error", MirrorState.STOPPED: "idle"}
+
+        def update(state: MirrorState, detail: str) -> None:
+            self.mirror_card.set_status(levels.get(state, "info"), state.value, detail)
+
+        mirror.state_changed.connect(update)
+        update(mirror.state, mirror.detail)
 
     @Slot(object, str)
     def _on_adb_status(self, status: AdbStatus, message: str) -> None:
