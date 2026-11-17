@@ -4,9 +4,8 @@ A Windows desktop controller for an **existing** Android emulator, built with Py
 PokePilot talks to the emulator only through **ADB** (and, from Phase 3, **scrcpy**). It does not
 include or modify an emulator, does not modify any APK, and does not touch game network traffic.
 
-> **Status: Phase 3 of 8 complete (v0.3.0).** The application shell, ADB detection, device
-> management with automatic reconnection, BlueStacks instance discovery, the app launcher and scrcpy
-> screen mirroring are working. The other modules are listed in the app as scheduled for later phases. See
+> **Status: Phase 4 of 8 complete (v0.4.0).** Device management, BlueStacks support, the app launcher,
+> scrcpy mirroring and PGSharp UI calibration and verification are working. The other modules are listed in the app as scheduled for later phases. See
 > [CHANGELOG.md](CHANGELOG.md).
 
 ## What works today
@@ -19,6 +18,7 @@ include or modify an emulator, does not modify any APK, and does not touch game 
 | Emulator Manager: Applications | List installed apps, choose a target app (for example your PGSharp install), launch it and confirm its process is running, check running state, force stop |
 | Emulator Manager: Emulator Instances | Finds BlueStacks 5 instances and their ADB ports in `bluestacks.conf`; connect, launch or set as default |
 | Screen Monitor | scrcpy mirroring with mouse and keyboard control, options (size, FPS, bitrate, fullscreen, view-only), crash auto-restart, screenshots |
+| PGSharp Controller | Launch and check PGSharp; calibrate tap targets and screen states on a screenshot; map and test features; layout change warnings |
 | Settings | ADB path (browse / auto-detect / test), command timeout, auto-refresh, emulator executable and arguments, scrcpy path (stored for Phase 3), log level |
 | Activity Monitor | Live, filterable application log; opens the log folder |
 | Reliability | All ADB work runs on background threads; JSON config is validated, saved atomically, and backed up and reset if it is corrupted |
@@ -102,7 +102,8 @@ Set the `POKEPILOT_HOME` environment variable to override the location.
 * [User manual](docs/USER_MANUAL.md)
 * [Troubleshooting](docs/TROUBLESHOOTING.md)
 * [scrcpy setup](docs/SCRCPY_SETUP.md)
-* PGSharp setup, automation profiles and build instructions are added in their phases.
+* [PGSharp setup and calibration](docs/PGSHARP_SETUP.md)
+* Automation profiles, automation profiles and build instructions are added in their phases.
 
 ## Scope and responsible use
 

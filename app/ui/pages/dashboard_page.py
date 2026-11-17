@@ -30,7 +30,7 @@ class DashboardPage(Page):
         self.mirror_card = StatusCard("Screen Mirroring")
         self.session_card = StatusCard("Automation Session")
         # Honest initial states: nothing has been checked for these modules yet.
-        self.pgsharp_card.set_status("idle", "Not checked", "PGSharp detection arrives in Phase 4.")
+        self.pgsharp_card.set_status("idle", "Not checked", "Use PGSharp Controller > Check Running.")
         self.mirror_card.set_status("idle", "Not running", "")
         self.session_card.set_status("idle", "Idle", "Profile: none")
         for i, card in enumerate(
@@ -80,6 +80,29 @@ class DashboardPage(Page):
         controller.busy_changed.connect(lambda busy: self.refresh_btn.setEnabled(not busy))
         self._on_adb_status(*controller.adb_status)
         self._refresh_device_card()
+
+    def attach_pgsharp(self, apps, pg) -> None:  # noqa: ANN001 - AppController, PgsharpController
+        from app.emulator.app_launcher import ProcessState
+
+        levels = {ProcessState.RUNNING: "ok", ProcessState.NOT_RUNNING: "idle", ProcessState.UNKNOWN: "warn"}
+        self._pg_state = ("idle", "Not checked")
+
+        def render() -> None:
+            lv = pg.last_verified
+            detail = f"Package: {apps.target_package or 'not set'}"
+            detail += f"\nLast verified: {lv[1]} at {lv[0]:%H:%M:%S}" if lv else "\nLast verified: none"
+            self.pgsharp_card.set_status(*self._pg_state, detail)
+
+        def on_proc(_serial: str, package: str, state: ProcessState) -> None:
+            if package == apps.target_package:
+                self._pg_state = (levels[state], f"Process: {state.value}")
+                render()
+
+        apps.process_state_changed.connect(on_proc)
+        apps.target_app_changed.connect(lambda _p: render())
+        pg.verification_done.connect(lambda _m: render())
+        pg.feature_tested.connect(lambda _r: render())
+        render()
 
     def attach_mirror(self, mirror) -> None:  # noqa: ANN001 - MirrorController
         from app.screen.mirror_controller import MirrorState

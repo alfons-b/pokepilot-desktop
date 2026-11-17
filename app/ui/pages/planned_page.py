@@ -22,12 +22,6 @@ class PlannedPage(Page):
 
 
 PLANNED_PAGES: dict[str, tuple[int, str, list[str]]] = {
-    "PGSharp Controller": (
-        4,
-        "Launch PGSharp and map its user-facing controls.",
-        ["App discovery and launch", "Running-state detection", "UI coordinate calibration",
-         "Feature registry per installed edition", "Post-action screen verification"],
-    ),
     "Automation Manager": (
         5,
         "Profile-based, sequential UI automation with explicit state verification.",

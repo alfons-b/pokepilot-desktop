@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.0] - 2026-11-17 - Phase 4: PGSharp controller and UI calibration
+
+### Added
+- **PGSharp Controller** page: launch and check the PGSharp app, then calibrate it on a screenshot canvas.
+- UI elements (named tap targets) stored as normalized coordinates, with Add, Move, Remove and Test Tap.
+- Screen states: reference regions captured from screenshots and compared as 32x32 grayscale signatures,
+  with an adjustable match threshold. **Verify Screen** reports per-state matches and difference scores.
+- Feature registry for Joystick, Teleport, Autowalk, Custom GPX, Nearby Radar, Quick Catch, Virtual GO Plus,
+  Auto Transfer, Auto Discard and Auto Incubator. Availability starts *Unverified* and is set by the user;
+  each feature has open steps, a toggle element and a verify state. **Test Feature** reports
+  Success, Failed or Unknown.
+- Layout change detection: warns when the aspect ratio or orientation differs from the calibration, and
+  after 3 consecutive verifications with no matching state.
+- `UiDriver`: synchronous tap, swipe, back, screenshot, verify and wait-for-state primitives with cancellation,
+  shared with the automation engine.
+- The Dashboard PGSharp card shows the process state and the last verified screen.
+- Calibration is stored in `data/pgsharp_layout.json` (atomic save, corrupt files backed up).
+- `docs/PGSHARP_SETUP.md`. 30 new tests (215 total).
+
 ## [0.3.0] - 2026-11-17 - Phase 3: scrcpy screen mirroring
 
 ### Added

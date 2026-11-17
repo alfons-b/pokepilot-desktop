@@ -248,3 +248,37 @@ def test_screen_page_start_without_scrcpy_shows_error(qtbot, make_app):
     page.start_btn.click()
     assert page.banner.property("level") == "error"
     assert "scrcpy" in page.banner.text()
+
+
+# ------------------------------------------------------------------ Phase 4
+def test_pgsharp_page_calibration_flow(qtbot, make_app, monkeypatch):
+    from PySide6.QtGui import QImage
+    from PySide6.QtWidgets import QInputDialog
+
+    from tests.fakes.fake_device import MENU
+
+    ctx = make_app()
+    page = ctx.window.pgsharp_page
+    pg = ctx.window.pgsharp
+    pg.image = QImage.fromData(MENU, "PNG")
+    page._on_image(pg.image)
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Menu button", True))
+    page.el_add_btn.click()
+    page.canvas.clicked.emit(0.25, 0.75)
+    assert "menu_button" in pg.layout.elements
+    assert page.el_list.count() == 1
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Menu open", True))
+    page.st_new_btn.click()
+    assert page.mode_rect.isChecked()
+    page.canvas.rect_selected.emit(0.0, 0.0, 0.5, 0.1)
+    assert len(pg.layout.states["menu_open"].regions) == 1
+    page.ft_table.selectRow(1)  # teleport
+    page.ft_avail.setCurrentText("Available")
+    page.ft_steps.setText("menu_button")
+    page.ft_verify.setCurrentIndex(page.ft_verify.findData("menu_open"))
+    assert page._save_feature()
+    fm = pg.layout.features["teleport"]
+    assert fm.open_steps == ["menu_button"] and fm.verify_state == "menu_open"
+    page.ft_steps.setText("does_not_exist")
+    assert page._save_feature() is False
+    assert page.banner.property("level") == "error"

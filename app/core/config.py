@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import logging
 import os
-import tempfile
 from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from app.core.fileutil import atomic_write_text
 
 logger = logging.getLogger(__name__)
 
@@ -163,21 +164,7 @@ class ConfigManager:
     def save(self, config: AppConfig) -> None:
         """Atomically write the configuration (temp file + replace)."""
         config.normalize()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        payload = json.dumps(config.to_dict(), indent=2, sort_keys=True)
-        fd, tmp_name = tempfile.mkstemp(prefix=".config-", suffix=".tmp", dir=self.path.parent)
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                fh.write(payload)
-                fh.flush()
-                os.fsync(fh.fileno())
-            os.replace(tmp_name, self.path)
-        except BaseException:
-            try:
-                os.unlink(tmp_name)
-            except OSError:
-                pass
-            raise
+        atomic_write_text(self.path, json.dumps(config.to_dict(), indent=2, sort_keys=True))
         logger.debug("Configuration saved to %s", self.path)
 
     def _backup_corrupt_file(self) -> Path | None:
