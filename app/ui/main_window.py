@@ -268,4 +268,5 @@ class MainWindow(QMainWindow):
         if not self.runner.wait_for_done(5000):
             logger.warning("Background tasks still running at exit.")
         logger.info("PokePilot closed")
+        self.db.close()
         event.accept()

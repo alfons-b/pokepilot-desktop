@@ -32,7 +32,7 @@ def main(argv: list[str]) -> int:
     if len(args) >= 2 and args[0] == "-s":
         args = args[2:]
     if scenario == "hang":
-        time.sleep(30)
+        time.sleep(6)  # longer than the test timeout; short so Windows pipe cleanup is quick
         return 0
     if args == ["version"]:
         sys.stdout.write(VERSION_OUTPUT)

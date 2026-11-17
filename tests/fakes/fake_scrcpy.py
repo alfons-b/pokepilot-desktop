@@ -21,4 +21,4 @@ if __name__ == "__main__":
     if mode == "run":
         print("INFO: Renderer: direct3d", flush=True)
         print("INFO: Texture: 1080x2400", flush=True)
-    time.sleep(30)
+    time.sleep(20)

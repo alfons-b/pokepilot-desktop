@@ -149,14 +149,19 @@ class Database:
     def _open(self, target: str) -> sqlite3.Connection:
         if self.path is not None:
             self.path.parent.mkdir(parents=True, exist_ok=True)
+        conn: sqlite3.Connection | None = None
         try:
             conn = self._connect(target)
             conn.execute("PRAGMA quick_check").fetchone()
         except sqlite3.DatabaseError as exc:
+            if conn is not None:
+                conn.close()  # Windows cannot rename a file that is still open
             if self.path is None or not self.path.exists():
                 raise DatabaseError(str(exc)) from exc
             logger.error("Database %s is corrupt (%s); backing it up and starting fresh.", self.path, exc)
             self.recovered_from = backup_corrupt(self.path)
+            if self.recovered_from is None:
+                raise DatabaseError(f"Database {self.path} is corrupt and could not be moved aside: {exc}") from exc
             conn = self._connect(target)
         self._migrate(conn)
         return conn
