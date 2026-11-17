@@ -1,4 +1,4 @@
 """PokePilot Desktop - Windows controller for an existing Android emulator."""
 
 __app_name__ = "PokePilot Desktop"
-__version__ = "0.4.0"
+__version__ = "0.5.0"

@@ -22,12 +22,6 @@ class PlannedPage(Page):
 
 
 PLANNED_PAGES: dict[str, tuple[int, str, list[str]]] = {
-    "Automation Manager": (
-        5,
-        "Profile-based, sequential UI automation with explicit state verification.",
-        ["Profile create / edit / duplicate / import / export", "Ordered action builder",
-         "Timeouts and expected states", "Pause / resume / stop / emergency stop"],
-    ),
     "Location Manager": (
         6,
         "Manage location presets and GPX files.",

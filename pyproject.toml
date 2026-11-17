@@ -1,6 +1,6 @@
 [project]
 name = "pokepilot-desktop"
-version = "0.4.0"
+version = "0.5.0"
 description = "Windows desktop controller for an existing Android emulator (ADB + scrcpy)."
 requires-python = ">=3.12"
 

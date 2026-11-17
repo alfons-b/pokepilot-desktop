@@ -2,6 +2,34 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.0] - 2026-11-17 - Phase 5: automation engine
+
+### Added
+- **Automation Manager** page: profiles (create, rename, duplicate, delete, JSON import/export), an ordered action
+  list (add, edit, remove, move), live validation against the calibration, and session controls with a live log,
+  duration, current action and last error.
+- Action editor generated from each action type's parameter schema, for all 12 action types, with timeout,
+  expected state, error policy (STOP, SKIP, RETRY) and retries.
+- Sequential engine with an explicit state machine (IDLE, PREPARING, RUNNING, PAUSED, STOPPING, COMPLETED,
+  FAILED); pause, resume, graceful stop, emergency stop (interrupts waits immediately) and user confirmation.
+- Explicit results: SUCCEEDED only when verified (or inherently certain); taps and swipes without an expected
+  state are UNKNOWN.
+- Reliability:
+  - pre-session checks (device online, profile valid, resolution matches calibration);
+  - duplicate-action and single-session protection;
+  - connection-loss recovery (30 s, repeats the action once), otherwise pending actions are CANCELLED;
+  - a session stops if the selected device changes;
+  - closing the app emergency-stops a running session.
+- Dashboard session buttons are live and run the current profile; the session card shows state, current action
+  and last error.
+- SQLite database (`data/pokepilot.db`) with all 9 tables: foreign keys, indexes, CHECK constraints, WAL,
+  transactions, versioned migrations, and backup and reset of corrupt files.
+- Session history and activity log persistence. Sessions cut off by a crash are marked INTERRUPTED.
+- `docs/AUTOMATION_PROFILES.md`. 61 new tests (276 total).
+
+### Fixed
+- Calibration marker labels were unreadable on light screenshots.
+
 ## [0.4.0] - 2026-11-17 - Phase 4: PGSharp controller and UI calibration
 
 ### Added

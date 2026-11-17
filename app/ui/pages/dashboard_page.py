@@ -11,7 +11,7 @@ from app.ui.log_bridge import LogEntry, QtLogHandler
 from app.ui.presenters import adb_status_display, device_display
 from app.ui.widgets.common import Page, StatusCard, hbox, make_button
 
-_SESSION_TOOLTIP = "Available when the automation engine is implemented (Phase 5)."
+_SESSION_TOOLTIP = "Runs the current profile (select it in Automation Manager)."
 MAX_RECENT_LOGS = 100
 
 
@@ -80,6 +80,46 @@ class DashboardPage(Page):
         controller.busy_changed.connect(lambda busy: self.refresh_btn.setEnabled(not busy))
         self._on_adb_status(*controller.adb_status)
         self._refresh_device_card()
+
+    def attach_sessions(self, sessions) -> None:  # noqa: ANN001 - SessionManager
+        from app.automation.state_machine import ACTIVE, SessionState
+
+        levels = {SessionState.RUNNING: "ok", SessionState.PAUSED: "warn", SessionState.FAILED: "error",
+                  SessionState.COMPLETED: "ok", SessionState.STOPPING: "warn", SessionState.PREPARING: "info"}
+        self.start_btn.clicked.connect(lambda: sessions.start())
+        self.pause_btn.clicked.connect(sessions.pause)
+        self.resume_btn.clicked.connect(sessions.resume)
+        self.stop_btn.clicked.connect(sessions.stop)
+        self.emergency_btn.clicked.connect(sessions.emergency_stop)
+        self.stop_btn.setToolTip("Finish the current action, then stop.")
+        self.emergency_btn.setToolTip("Interrupt the session immediately.")
+
+        def render(*_: object) -> None:
+            state = sessions.state
+            active = sessions.is_active and state in ACTIVE
+            profile = sessions.current_profile_name() or "none"
+            detail = f"Profile: {profile}"
+            if active:
+                detail += f"\n{sessions.current_action or 'Preparing...'}"
+            elif sessions.last_summary:
+                detail += f"\nLast: {sessions.last_summary.result}"
+            if sessions.last_error:
+                detail += f"\nError: {sessions.last_error[:120]}"
+            self.session_card.set_status(levels.get(state, "idle"), state.value.capitalize(), detail)
+            self.start_btn.setEnabled(not active and profile != "none")
+            self.pause_btn.setEnabled(state is SessionState.RUNNING)
+            self.resume_btn.setEnabled(state is SessionState.PAUSED)
+            self.stop_btn.setEnabled(state in (SessionState.RUNNING, SessionState.PAUSED, SessionState.PREPARING))
+            self.emergency_btn.setEnabled(active)
+
+        for sig in (sessions.state_changed, sessions.action_updated, sessions.session_finished,
+                    sessions.current_profile_changed, sessions.session_started):
+            sig.connect(render)
+        sessions.operation_failed.connect(lambda op, m: self._append_log_text(f"{op}: {m}"))
+        render()
+
+    def _append_log_text(self, text: str) -> None:
+        self.log_list.insertItem(0, text)
 
     def attach_pgsharp(self, apps, pg) -> None:  # noqa: ANN001 - AppController, PgsharpController
         from app.emulator.app_launcher import ProcessState

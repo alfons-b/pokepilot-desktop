@@ -40,6 +40,7 @@ class AppConfig:
     preferred_device_serial: str = ""
     auto_reconnect_enabled: bool = True
     target_app_package: str = ""
+    current_profile_id: int = 0
     bluestacks_conf_path: str = ""
     recent_connect_addresses: list[str] = field(default_factory=list)
     emulator_path: str = ""

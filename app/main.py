@@ -14,7 +14,9 @@ from app.core.config import ConfigManager
 from app.core.device_controller import DeviceController
 from app.core.logging_setup import setup_logging
 from app.core.task_runner import TaskRunner
-from app.paths import config_path, logs_dir
+from app.database.db import Database
+from app.monitoring.history import SessionHistoryRepository
+from app.paths import config_path, data_dir, logs_dir
 from app.ui.log_bridge import QtLogHandler
 from app.ui.main_window import MainWindow
 from app.ui.theme import build_stylesheet
@@ -51,8 +53,14 @@ def build_app(controller_kwargs: dict | None = None) -> AppContext:
 
     runner = TaskRunner()
     controller = DeviceController(config_manager, load.config, runner, **(controller_kwargs or {}))
-    window = MainWindow(controller, runner, config_manager, log_handler)
+    db = Database(data_dir() / "pokepilot.db")
+    interrupted = SessionHistoryRepository(db).mark_interrupted()
+    if interrupted:
+        logger.warning("%d session(s) from a previous run did not finish cleanly (marked INTERRUPTED).", interrupted)
+    window = MainWindow(controller, runner, config_manager, log_handler, db=db)
     warnings = list(load.warnings) if load.recovered_from_corruption else []
+    if db.recovered_from:
+        warnings.append(f"The database was damaged and has been reset. The old file was saved as {db.recovered_from.name}.")
     return AppContext(config_manager, runner, controller, log_handler, window, warnings)
 
 

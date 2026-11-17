@@ -47,6 +47,7 @@ class FakeRunner:
         self.calls: list[tuple[str, ...]] = []
         self.timeouts: list[float] = []
         self.delay = delay
+        self.input_ok = False  # accept any "shell input ..." command
 
     def set(self, args: Sequence[str], stdout: str = "", returncode: int = 0, stderr: str = "") -> None:
         self.responses[tuple(args)] = (stdout, returncode, stderr)
@@ -63,6 +64,9 @@ class FakeRunner:
             # Match ignoring a leading "-s SERIAL" pair.
             if len(key) > 2 and key[0] == "-s":
                 resp = self.responses.get(key[2:])
+        stripped = key[2:] if len(key) > 2 and key[0] == "-s" else key
+        if resp is None and self.input_ok and stripped[:2] == ("shell", "input"):
+            resp = ("", 0, "")
         if resp is None:
             return CommandResult(argv, 1, "", f"fake: no response for {key}")
         if isinstance(resp, BaseException):
@@ -85,4 +89,6 @@ def standard_runner(devices_output: str = DEVICES_ONE, delay: float = 0.0) -> Fa
     r.set(["shell", "am", "start", "-n", f"{TARGET_PKG}/.MainActivity"], AM_START_OUTPUT)
     r.set(["shell", "pidof", TARGET_PKG], "4242\n")
     r.set(["shell", "am", "force-stop", TARGET_PKG], "")
+    r.set(["get-state"], "device\n")
+    r.input_ok = True
     return r

@@ -282,3 +282,72 @@ def test_pgsharp_page_calibration_flow(qtbot, make_app, monkeypatch):
     page.ft_steps.setText("does_not_exist")
     assert page._save_feature() is False
     assert page.banner.property("level") == "error"
+
+
+# ------------------------------------------------------------------ Phase 5
+def test_action_dialog_builds_valid_actions(qtbot):
+    from app.automation.models import ActionType
+    from app.pgsharp.layout import PgsharpLayout
+    from app.ui.widgets.action_dialog import ActionDialog
+
+    lay = PgsharpLayout()
+    lay.add_element("menu", 0.5, 0.5)
+    dlg = ActionDialog(lay)
+    qtbot.addWidget(dlg)
+    dlg.type_combo.setCurrentText("TAP")
+    action, errors = dlg.build_action()
+    assert errors  # neither element nor x/y chosen
+    dlg._widgets["element"].setCurrentIndex(dlg._widgets["element"].findData("menu"))
+    action, errors = dlg.build_action()
+    assert errors == [] and action.params == {"element": "menu"}
+    dlg.type_combo.setCurrentText("WAIT")
+    dlg._widgets["seconds"].setValue(2.5)
+    action, errors = dlg.build_action()
+    assert action.type is ActionType.WAIT and action.params["seconds"] == 2.5 and not errors
+    dlg.type_combo.setCurrentText("SWIPE")
+    dlg._accept()
+    assert dlg.result_action is not None and dlg.result_action.type is ActionType.SWIPE
+
+
+def test_automation_page_profile_flow(qtbot, make_app, monkeypatch, tmp_path):
+    from PySide6.QtWidgets import QInputDialog
+
+    from app.automation.models import Action, ActionType
+
+    ctx = make_app(standard_runner(DEVICES_ONE))
+    page = ctx.window.automation_page
+    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Morning route", True))
+    page.new_btn.click()
+    assert page.profile_list.count() == 1 and page._profile.name == "Morning route"
+
+    class FakeDialog:
+        def __init__(self, layout, action=None, parent=None):
+            self.result_action = Action(ActionType.WAIT, {"seconds": 0.2}, 5)
+
+        def exec(self):
+            return True
+
+    monkeypatch.setattr("app.ui.pages.automation_page.ActionDialog", FakeDialog)
+    page.add_btn.click()
+    page.table.clearSelection()
+    page.add_btn.click()
+    assert page.table.rowCount() == 2
+    assert "valid" in page.validation_label.text()
+    page.table.selectRow(1)
+    page.up_btn.click()
+    page.remove_btn.click()
+    assert page.table.rowCount() == 1
+    out = tmp_path / "p.json"
+    assert page.export_to_file(str(out))
+    assert page.import_from_file(str(out)) is not None
+    assert page.profile_list.count() == 2
+
+    ctx.controller.refresh_devices()
+    qtbot.waitUntil(lambda: ctx.controller.selected_device is not None, timeout=3000)
+    page.reload_profiles(page._sessions.current_profile_id)
+    with qtbot.waitSignal(ctx.window.sessions.session_finished, timeout=10000) as sig:
+        page.start_btn.click()
+    assert sig.args[0].result == "COMPLETED"
+    ctx.window.sessions.wait(3)
+    assert ctx.window.dashboard_page.session_card.badge.text_value in ("Completed", "Idle")
+    assert ctx.window.dashboard_page.start_btn.isEnabled()

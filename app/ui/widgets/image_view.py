@@ -115,6 +115,19 @@ class ImageView(QWidget):
             if w > 0.005 and h > 0.005:
                 self.rect_selected.emit(x, y, w, h)
 
+    @staticmethod
+    def _label(p: QPainter, pos: QPointF, text: str, color: str) -> None:
+        """Readable label on any background: dark box with a coloured edge."""
+        if not text:
+            return
+        fm = p.fontMetrics()
+        box = QRectF(pos.x() - 3, pos.y() - fm.ascent() - 2, fm.horizontalAdvance(text) + 6, fm.height() + 3)
+        p.setPen(QPen(QColor(color), 1))
+        p.setBrush(QColor(17, 24, 39, 215))
+        p.drawRoundedRect(box, 3, 3)
+        p.setPen(QColor("white"))
+        p.drawText(pos, text)
+
     def paintEvent(self, _event: QPaintEvent) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -129,15 +142,15 @@ class ImageView(QWidget):
             tl = self._to_widget(rect.x, rect.y)
             br = self._to_widget(rect.x + rect.w, rect.y + rect.h)
             p.setPen(QPen(QColor(rect.color), 2))
+            p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRect(QRectF(tl, br))
-            p.drawText(tl + QPointF(3, -4), rect.label)
+            self._label(p, tl + QPointF(2, 14), rect.label, rect.color)
         for m in self._markers:
             c = self._to_widget(m.x, m.y)
             p.setPen(QPen(QColor("white"), 2))
             p.setBrush(QColor(m.color))
             p.drawEllipse(c, 7, 7)
-            p.setPen(QColor("white"))
-            p.drawText(c + QPointF(10, 4), m.label)
+            self._label(p, c + QPointF(11, 5), m.label, m.color)
         if self._drag_start is not None and self._drag_now is not None:
             p.setPen(QPen(QColor("#facc15"), 2, Qt.PenStyle.DashLine))
             p.setBrush(Qt.BrushStyle.NoBrush)
