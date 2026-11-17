@@ -83,9 +83,11 @@ class SettingsPage(Page):
         self.refresh_spin.setSuffix(" s")
         self.refresh_spin.setFixedWidth(120)
         self.auto_refresh_check.toggled.connect(self.refresh_spin.setEnabled)
+        self.auto_reconnect_check = QCheckBox("Automatically reconnect TCP/IP devices (e.g. BlueStacks) when they drop")
         f = QFormLayout(dev_box)
         f.addRow(self.auto_refresh_check)
         f.addRow("Refresh interval:", self.refresh_spin)
+        f.addRow(self.auto_reconnect_check)
         col.addWidget(dev_box)
 
         # Emulator
@@ -96,9 +98,16 @@ class SettingsPage(Page):
         self.emu_browse_btn.clicked.connect(lambda: self._browse(self.emu_path_edit, "Select emulator executable"))
         self.emu_args_edit = QLineEdit()
         self.emu_args_edit.setPlaceholderText('Optional, e.g. --instance "Pie64"')
+        self.bs_conf_edit = QLineEdit()
+        self.bs_conf_edit.setPlaceholderText(r"Auto: C:\ProgramData\BlueStacks_nxt\bluestacks.conf")
+        self.bs_conf_browse_btn = make_button("Browse...")
+        self.bs_conf_browse_btn.clicked.connect(
+            lambda: self._browse(self.bs_conf_edit, "Select bluestacks.conf", "Config (*.conf);;All files (*)")
+        )
         f = QFormLayout(emu_box)
         f.addRow("Executable:", hbox(self.emu_path_edit, self.emu_browse_btn, stretch_end=False))
         f.addRow("Arguments:", self.emu_args_edit)
+        f.addRow("BlueStacks config:", hbox(self.bs_conf_edit, self.bs_conf_browse_btn, stretch_end=False))
         col.addWidget(emu_box)
 
         # scrcpy
@@ -140,6 +149,8 @@ class SettingsPage(Page):
         self.auto_refresh_check.setChecked(cfg.auto_refresh_enabled)
         self.refresh_spin.setValue(cfg.auto_refresh_interval_s)
         self.refresh_spin.setEnabled(cfg.auto_refresh_enabled)
+        self.auto_reconnect_check.setChecked(cfg.auto_reconnect_enabled)
+        self.bs_conf_edit.setText(cfg.bluestacks_conf_path)
         self.emu_path_edit.setText(cfg.emulator_path)
         self.emu_args_edit.setText(cfg.emulator_args)
         self.scrcpy_path_edit.setText(cfg.scrcpy_path)
@@ -156,6 +167,8 @@ class SettingsPage(Page):
             or self.emu_args_edit.text() != c.emulator_args
             or self.scrcpy_path_edit.text().strip() != c.scrcpy_path
             or self.log_level_combo.currentText() != c.log_level
+            or self.auto_reconnect_check.isChecked() != c.auto_reconnect_enabled
+            or self.bs_conf_edit.text().strip() != c.bluestacks_conf_path
         )
 
     def save(self) -> bool:
@@ -174,6 +187,8 @@ class SettingsPage(Page):
         cfg.emulator_args = self.emu_args_edit.text().strip()
         cfg.scrcpy_path = self.scrcpy_path_edit.text().strip()
         cfg.log_level = self.log_level_combo.currentText()
+        cfg.auto_reconnect_enabled = self.auto_reconnect_check.isChecked()
+        cfg.bluestacks_conf_path = self.bs_conf_edit.text().strip()
         try:
             # set_adb_path saves if the path changed; save once more for the other fields.
             self._controller.set_adb_path(self.adb_path_edit.text())
@@ -197,8 +212,8 @@ class SettingsPage(Page):
         if answer == QMessageBox.StandardButton.Yes:
             self.load_from_config(self._controller.config)
 
-    def _browse(self, target: QLineEdit, title: str) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, title, target.text(), _EXE_FILTER)
+    def _browse(self, target: QLineEdit, title: str, file_filter: str = _EXE_FILTER) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, title, target.text(), file_filter)
         if path:
             target.setText(path)
 

@@ -34,6 +34,9 @@ class AppConfig:
     auto_refresh_enabled: bool = True
     auto_refresh_interval_s: int = 5
     preferred_device_serial: str = ""
+    auto_reconnect_enabled: bool = True
+    target_app_package: str = ""
+    bluestacks_conf_path: str = ""
     recent_connect_addresses: list[str] = field(default_factory=list)
     emulator_path: str = ""
     emulator_args: str = ""
@@ -58,6 +61,8 @@ class AppConfig:
         self.adb_path = self.adb_path.strip()
         self.emulator_path = self.emulator_path.strip()
         self.scrcpy_path = self.scrcpy_path.strip()
+        self.target_app_package = self.target_app_package.strip()
+        self.bluestacks_conf_path = self.bluestacks_conf_path.strip()
         self.recent_connect_addresses = list(
             dict.fromkeys(a.strip() for a in self.recent_connect_addresses if a.strip())
         )[:MAX_RECENT_ADDRESSES]

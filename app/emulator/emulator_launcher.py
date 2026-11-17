@@ -39,9 +39,20 @@ def build_command(executable: str, args: str) -> list[str]:
     return [str(path), *split_args(args)]
 
 
+def join_args(args: list[str] | tuple[str, ...]) -> str:
+    """Inverse of :func:`split_args` for storing arguments in settings."""
+    return " ".join(f'"{a}"' if (" " in a or not a) else a for a in args)
+
+
 def launch_emulator(executable: str, args: str = "") -> int:
     """Start the emulator detached from PokePilot. Returns the process id."""
-    cmd = build_command(executable, args)
+    return launch_command(build_command(executable, args))
+
+
+def launch_command(cmd: list[str]) -> int:
+    """Start an already-built command detached from PokePilot. Returns the process id."""
+    if not cmd or not Path(cmd[0]).is_file():
+        raise EmulatorLaunchError(f"Emulator executable not found: {cmd[0] if cmd else '<empty>'}")
     kwargs: dict = {
         "cwd": str(Path(cmd[0]).parent),
         "stdin": subprocess.DEVNULL,

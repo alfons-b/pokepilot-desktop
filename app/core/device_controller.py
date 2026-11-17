@@ -7,6 +7,7 @@ methods; all blocking ADB work runs on the :class:`TaskRunner` thread pool.
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from enum import StrEnum
 
@@ -14,6 +15,7 @@ from PySide6.QtCore import QObject, QTimer, Signal
 
 from app.core.config import AppConfig, ConfigManager
 from app.core.task_runner import TaskRunner
+from app.emulator import bluestacks
 from app.emulator.adb_client import (
     AdbClient,
     AdbNotConfiguredError,
@@ -21,8 +23,10 @@ from app.emulator.adb_client import (
     AdbTimeoutError,
 )
 from app.emulator.adb_locator import AdbLocation, locate_adb, verify_adb
-from app.emulator.emulator_launcher import launch_emulator
+from app.emulator.emulator_launcher import join_args, launch_command, launch_emulator
+from app.emulator.instances import DiscoveryResult, EmulatorInstance
 from app.emulator.models import AdbDevice, DeviceInfo
+from app.emulator.reconnect import ReconnectAction, is_tcp_address, plan_reconnect
 from app.emulator.selection import choose_selected_serial
 
 logger = logging.getLogger(__name__)
@@ -53,6 +57,8 @@ class DeviceController(QObject):
     operation_failed = Signal(str, str)  # operation, message
     busy_changed = Signal(bool)
     adb_path_changed = Signal(str)
+    instances_discovered = Signal(object)  # DiscoveryResult
+    reconnect_attempted = Signal(str, bool)  # address, success
 
     def __init__(
         self,
@@ -62,6 +68,8 @@ class DeviceController(QObject):
         client_factory: ClientFactory | None = None,
         locator: Callable[[str | None], AdbLocation | None] | None = None,
         verifier: Callable[[str], str] | None = None,
+        discoverer: Callable[[str], DiscoveryResult] | None = None,
+        clock: Callable[[], float] = time.monotonic,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -71,11 +79,17 @@ class DeviceController(QObject):
         self._client_factory = client_factory or _default_client_factory
         self._locate = locator or (lambda configured: locate_adb(configured))
         self._verify = verifier or verify_adb
+        self._discover = discoverer or (lambda conf: bluestacks.discover(conf))
+        self._clock = clock
+        self._last_reconnect: dict[str, float] = {}
+        self._reconnect_in_flight = False
+        self._reconnect_failures: dict[str, int] = {}
         self._devices: list[AdbDevice] = []
         self._selected: str | None = None
         self._status = AdbStatus.UNKNOWN
         self._status_message = ""
         self._refresh_in_flight = False
+        self._refresh_pending = False
         self._busy_ops = 0
         self._last_info: DeviceInfo | None = None
 
@@ -132,20 +146,34 @@ class DeviceController(QObject):
         self._set_status(AdbStatus.UNKNOWN, "ADB path changed")
         logger.info("ADB path set to %s", path or "<empty>")
 
-    def _save_config(self) -> None:
+    def save_config(self) -> bool:
+        """Persist the shared configuration. Emits operation_failed and returns False on error."""
         try:
             self._config_manager.save(self._config)
         except OSError as exc:
             logger.error("Failed to save configuration: %s", exc)
             self.operation_failed.emit("Save settings", f"Could not save configuration: {exc}")
+            return False
+        return True
+
+    _save_config = save_config
+
+    def make_client(self) -> AdbClient:
+        """A new client bound to the current ADB settings (safe to use on a worker thread)."""
+        return self._client()
 
     def _client(self) -> AdbClient:
         return self._client_factory(self._config.adb_path, self._config.adb_command_timeout_s)
 
     # ------------------------------------------------------------ operations
     def refresh_devices(self) -> bool:
-        """Start a background device scan. Returns False if skipped."""
+        """Start a background device scan. Returns False if not started now.
+
+        A request made while a scan is running is queued and runs once that scan
+        finishes, so state changes (e.g. a reconnect) are never missed.
+        """
         if self._refresh_in_flight:
+            self._refresh_pending = True
             return False
         if not self._config.adb_path:
             self._set_status(AdbStatus.NOT_CONFIGURED, "Set the ADB path in Settings or use Auto-detect.")
@@ -163,13 +191,14 @@ class DeviceController(QObject):
         )
         return True
 
-    def select_device(self, serial: str | None) -> None:
+    def select_device(self, serial: str | None, persist: bool = True) -> None:
+        """Select a device. ``persist`` saves it as the preferred device for future sessions."""
         serial = serial or None
         if serial == self._selected:
             return
         self._selected = serial
         self._last_info = None
-        if serial:
+        if serial and persist:
             self._config.preferred_device_serial = serial
             self._save_config()
             logger.info("Selected device %s", serial)
@@ -250,6 +279,114 @@ class DeviceController(QObject):
             on_result=on_ok,
         )
 
+    # ------------------------------------------------------------- reconnect
+    def reconnect_selected(self) -> bool:
+        """Manually reconnect the selected (or preferred) TCP device."""
+        target = self._selected or self._config.preferred_device_serial or None
+        if not is_tcp_address(target):
+            self.operation_failed.emit(
+                "Reconnect", "Only TCP/IP devices (host:port) can be reconnected. USB/console devices reconnect on their own."
+            )
+            return False
+        device = next((d for d in self._devices if d.serial == target), None)
+        action = ReconnectAction(target, disconnect_first=device is not None)
+        return self._start_reconnect(action, manual=True)
+
+    def _maybe_reconnect(self) -> None:
+        if self._reconnect_in_flight:
+            return
+        target = self._selected or self._config.preferred_device_serial or None
+        action = plan_reconnect(
+            self._devices,
+            self._selected,
+            self._config.preferred_device_serial or None,
+            self._last_reconnect.get(target or ""),
+            self._clock(),
+        )
+        if action:
+            self._start_reconnect(action, manual=False)
+
+    def _start_reconnect(self, action: ReconnectAction, manual: bool) -> bool:
+        if self._reconnect_in_flight:
+            return False
+        self._reconnect_in_flight = True
+        self._last_reconnect[action.address] = self._clock()
+        client = self._client()
+
+        def work() -> str:
+            if action.disconnect_first:
+                try:
+                    client.disconnect(action.address)
+                except Exception as exc:  # noqa: BLE001 - stale entry may already be gone
+                    logger.debug("disconnect %s before reconnect: %s", action.address, exc)
+            return client.connect(action.address)
+
+        def on_ok(message: str) -> None:
+            self._reconnect_failures.pop(action.address, None)
+            logger.info("Reconnected %s: %s", action.address, message)
+            self.reconnect_attempted.emit(action.address, True)
+            if manual:
+                self.operation_succeeded.emit("Reconnect", message)
+            self.refresh_devices()
+
+        def on_err(exc: Exception) -> None:
+            n = self._reconnect_failures.get(action.address, 0) + 1
+            self._reconnect_failures[action.address] = n
+            # Log the first failure of a streak at WARNING, the rest at DEBUG to avoid log spam.
+            (logger.warning if n == 1 or manual else logger.debug)("Reconnect to %s failed: %s", action.address, exc)
+            self.reconnect_attempted.emit(action.address, False)
+            if manual:
+                self.operation_failed.emit("Reconnect", str(exc))
+
+        def on_done() -> None:
+            self._reconnect_in_flight = False
+            self._end()
+
+        self._begin()
+        self._runner.submit(work, on_result=on_ok, on_error=on_err, on_finished=on_done, name="reconnect")
+        return True
+
+    # ------------------------------------------------------------- instances
+    def discover_instances(self) -> None:
+        def on_ok(result: DiscoveryResult) -> None:
+            self.instances_discovered.emit(result)
+
+        self._run_op("Discover instances", self._discover, self._config.bluestacks_conf_path, on_result=on_ok)
+
+    def connect_instance(self, instance: EmulatorInstance) -> None:
+        if not instance.adb_address:
+            self.operation_failed.emit("Connect", f"No ADB port is known for {instance.display_name}.")
+            return
+        self.connect_address(instance.adb_address)
+
+    def launch_instance(self, instance: EmulatorInstance) -> None:
+        if not instance.launch_executable:
+            self.operation_failed.emit(
+                "Launch emulator", f"The launcher for {instance.provider} was not found. Set it in Settings."
+            )
+            return
+        cmd = [instance.launch_executable, *instance.launch_args]
+
+        def on_ok(pid: int) -> None:
+            self.operation_succeeded.emit(
+                "Launch emulator", f"Started {instance.display_name} (pid {pid}). It may take a minute to boot."
+            )
+
+        self._run_op("Launch emulator", launch_command, cmd, on_result=on_ok)
+
+    def use_instance_as_launcher(self, instance: EmulatorInstance) -> None:
+        if not instance.launch_executable:
+            self.operation_failed.emit("Use as launcher", "No launcher executable is known for this instance.")
+            return
+        self._config.emulator_path = instance.launch_executable
+        self._config.emulator_args = join_args(list(instance.launch_args))
+        if instance.adb_address:
+            self._config.preferred_device_serial = instance.adb_address
+        self._save_config()
+        self.operation_succeeded.emit(
+            "Use as launcher", f"{instance.display_name} is now the default emulator and preferred device."
+        )
+
     # --------------------------------------------------------------- helpers
     def _run_op(self, name: str, fn: Callable, *args: object, on_result: Callable) -> None:
         self._begin()
@@ -276,11 +413,16 @@ class DeviceController(QObject):
     def _on_refresh_finished(self) -> None:
         self._refresh_in_flight = False
         self._end()
+        if self._refresh_pending:
+            self._refresh_pending = False
+            QTimer.singleShot(0, self.refresh_devices)
 
     def _on_devices(self, devices: list[AdbDevice]) -> None:
         online = sum(1 for d in devices if d.is_online)
         self._set_status(AdbStatus.OK, f"{len(devices)} device(s), {online} online")
         self._update_devices(devices)
+        if self._config.auto_reconnect_enabled:
+            self._maybe_reconnect()
 
     def _on_info(self, info: DeviceInfo) -> None:
         if info.serial != self._selected:
@@ -310,7 +452,8 @@ class DeviceController(QObject):
             self._devices, self._selected, self._config.preferred_device_serial or None
         )
         if new_sel != self._selected:
-            self.select_device(new_sel)
+            # An automatic choice must not overwrite a device the user explicitly preferred.
+            self.select_device(new_sel, persist=not self._config.preferred_device_serial)
 
     @staticmethod
     def _log_device_diff(old: list[AdbDevice], new: list[AdbDevice]) -> None:

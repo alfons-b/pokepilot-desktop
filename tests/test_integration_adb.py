@@ -79,3 +79,16 @@ def test_controller_missing_adb_executable(qtbot, tmp_path, config_manager, conf
     with qtbot.waitSignal(ctrl.busy_changed, check_params_cb=lambda b: b is False, timeout=5000):
         ctrl.refresh_devices()
     assert ctrl.adb_status[0] is AdbStatus.NOT_FOUND
+
+
+def test_app_list_and_launch_via_subprocess(fake_adb_exe, monkeypatch):
+    from app.emulator import app_launcher
+    from app.emulator.app_launcher import ProcessState
+    from tests.fakes.fake_runner import TARGET_PKG
+
+    monkeypatch.setenv("FAKE_ADB_SCENARIO", "one")
+    client = AdbClient(str(fake_adb_exe))
+    assert TARGET_PKG in app_launcher.list_packages(client, "emulator-5554")
+    result = app_launcher.launch_app(client, "emulator-5554", TARGET_PKG)
+    assert result.command_accepted and result.process_state is ProcessState.RUNNING
+    assert app_launcher.process_state(client, "emulator-5554", "com.not.running") is ProcessState.NOT_RUNNING

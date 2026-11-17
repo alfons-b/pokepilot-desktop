@@ -14,12 +14,16 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from app.core.app_controller import AppController
 from app.core.device_controller import AdbStatus, DeviceController
 from app.emulator.models import AdbDevice, DeviceInfo
+from app.ui.pages.apps_tab import AppsTab
+from app.ui.pages.instances_tab import InstancesTab
 from app.ui.presenters import device_state_display
 from app.ui.theme import STATUS_COLORS
 from app.ui.widgets.common import Banner, Page, hbox, make_button
@@ -27,14 +31,15 @@ from app.ui.widgets.common import Banner, Page, hbox, make_button
 COLUMNS = ["Serial", "State", "Model", "Product", "Connection", "Emulator hint"]
 
 CONNECT_HINT = (
-    "Many emulators expose ADB over TCP and need a one-time connect. Typical local ports "
-    "(check your emulator's settings): 5555, 5556, 7555, 16384, 21503, 62001. "
-    "Emulators listed as 'emulator-NNNN' connect automatically."
+    "BlueStacks: enable Settings > Advanced > Android Debug Bridge; the address is shown there "
+    "(usually 127.0.0.1:5555), or use the Emulator Instances tab. Other emulators' typical ports: "
+    "7555/16384 (MuMu), 62001 (Nox), 21503 (MEmu). 'emulator-NNNN' devices connect automatically. "
+    "Connected TCP devices are reconnected automatically if the link drops."
 )
 
 
 class EmulatorPage(Page):
-    def __init__(self, controller: DeviceController, parent: QWidget | None = None) -> None:
+    def __init__(self, controller: DeviceController, apps: AppController, parent: QWidget | None = None) -> None:
         super().__init__(
             "Emulator Manager",
             "Detect Android emulators through ADB and choose the device PokePilot controls.",
@@ -53,7 +58,23 @@ class EmulatorPage(Page):
         self.refresh_btn.clicked.connect(controller.refresh_devices)
         self.restart_btn.clicked.connect(self._confirm_restart)
         self.launch_btn.clicked.connect(controller.launch_emulator)
-        self.body.addLayout(hbox(self.refresh_btn, self.restart_btn, self.launch_btn, self.busy_label))
+        self.reconnect_btn = make_button("Reconnect", tooltip="Re-run adb connect for the selected TCP/IP device.")
+        self.reconnect_btn.clicked.connect(controller.reconnect_selected)
+        self.body.addLayout(
+            hbox(self.refresh_btn, self.reconnect_btn, self.restart_btn, self.launch_btn, self.busy_label)
+        )
+
+        self.tabs = QTabWidget()
+        devices_tab = QWidget()
+        dl = QVBoxLayout(devices_tab)
+        dl.setContentsMargins(0, 8, 0, 0)
+        dl.setSpacing(12)
+        self.apps_tab = AppsTab(controller, apps)
+        self.instances_tab = InstancesTab(controller)
+        self.tabs.addTab(devices_tab, "Devices")
+        self.tabs.addTab(self.apps_tab, "Applications")
+        self.tabs.addTab(self.instances_tab, "Emulator Instances")
+        self.body.addWidget(self.tabs, 1)
 
         # Connect by address
         connect_box = QGroupBox("Connect over TCP/IP")
@@ -70,7 +91,7 @@ class EmulatorPage(Page):
         cb = QVBoxLayout(connect_box)
         cb.addLayout(hbox(QLabel("Address:"), self.address_combo, self.connect_btn))
         cb.addWidget(hint)
-        self.body.addWidget(connect_box)
+        dl.addWidget(connect_box)
         self._reload_addresses()
 
         # Devices table
@@ -91,7 +112,7 @@ class EmulatorPage(Page):
         db.addWidget(self.table)
         db.addWidget(self.empty_label)
         db.addWidget(self.selected_label)
-        self.body.addWidget(devices_box, 1)
+        dl.addWidget(devices_box, 1)
 
         # Device info
         info_box = QGroupBox("Device Information")
@@ -115,7 +136,7 @@ class EmulatorPage(Page):
         ib = QVBoxLayout(info_box)
         ib.addLayout(hbox(self.info_btn))
         ib.addLayout(form)
-        self.body.addWidget(info_box)
+        dl.addWidget(info_box)
 
         controller.devices_changed.connect(self._populate)
         controller.selected_device_changed.connect(self._on_selected_changed)
@@ -123,6 +144,8 @@ class EmulatorPage(Page):
         controller.busy_changed.connect(self._on_busy)
         controller.operation_succeeded.connect(self._on_success)
         controller.operation_failed.connect(self._on_failure)
+        apps.operation_succeeded.connect(self._on_success)
+        apps.operation_failed.connect(self._on_failure)
         controller.adb_status_changed.connect(self._on_adb_status)
         self._populate(controller.devices)
 
@@ -226,7 +249,7 @@ class EmulatorPage(Page):
     @Slot(bool)
     def _on_busy(self, busy: bool) -> None:
         self.busy_label.setText("Working..." if busy else "")
-        for b in (self.refresh_btn, self.restart_btn, self.connect_btn, self.launch_btn):
+        for b in (self.refresh_btn, self.restart_btn, self.connect_btn, self.launch_btn, self.reconnect_btn):
             b.setEnabled(not busy)
         device = self._controller.selected_device
         self.info_btn.setEnabled(not busy and bool(device and device.is_online))

@@ -106,9 +106,12 @@ def test_overlapping_refresh_is_skipped(qtbot, config_manager, config):
     fake = standard_runner(DEVICES_ONE, delay=0.3)
     ctrl = make_controller(config_manager, config, fake)
     assert ctrl.refresh_devices() is True
-    assert ctrl.refresh_devices() is False
+    assert ctrl.refresh_devices() is False  # queued, not run concurrently
+    assert ctrl.refresh_devices() is False  # coalesced with the queued request
+    qtbot.waitUntil(lambda: fake.calls.count(("devices", "-l")) == 2, timeout=3000)
     qtbot.waitUntil(lambda: not ctrl.is_busy, timeout=3000)
-    assert fake.calls.count(("devices", "-l")) == 1
+    qtbot.wait(100)
+    assert fake.calls.count(("devices", "-l")) == 2
 
 
 def test_device_info(qtbot, config_manager, config):

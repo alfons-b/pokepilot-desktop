@@ -163,3 +163,62 @@ def test_close_with_unsaved_settings_can_cancel(qtbot, make_app, monkeypatch):
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
     ctx.window.close()
     assert not ctx.window.isVisible()
+
+
+# ------------------------------------------------------------------ Phase 2
+def test_emulator_manager_has_tabs(make_app):
+    page = make_app().window.emulator_page
+    assert [page.tabs.tabText(i) for i in range(page.tabs.count())] == [
+        "Devices",
+        "Applications",
+        "Emulator Instances",
+    ]
+
+
+def test_apps_tab_load_filter_and_set_target(qtbot, make_app):
+    from tests.fakes.fake_runner import TARGET_PKG
+
+    ctx = make_app(standard_runner(DEVICES_ONE))
+    tab = ctx.window.emulator_page.apps_tab
+    ctx.controller.refresh_devices()
+    qtbot.waitUntil(lambda: ctx.controller.selected_device is not None, timeout=3000)
+    tab.load_btn.click()
+    qtbot.waitUntil(lambda: tab.list.count() == 3, timeout=3000)
+    tab.search_edit.setText("target")
+    assert tab.list.count() == 1
+    tab.list.setCurrentRow(0)
+    tab.set_target_btn.click()
+    assert TARGET_PKG in tab.target_label.text()
+    assert tab.launch_btn.isEnabled()
+    tab.launch_btn.click()
+    qtbot.waitUntil(lambda: tab.state_badge.text_value == "Running", timeout=5000)
+
+
+def test_instances_tab_populates(qtbot, make_app, tmp_path):
+    from app.emulator.instances import DiscoveryResult, EmulatorInstance
+
+    exe = tmp_path / "HD-Player.exe"
+    exe.write_text("")
+    inst = EmulatorInstance("BlueStacks", "Pie64", "BlueStacks App Player", "127.0.0.1:5555", str(exe),
+                            ("--instance", "Pie64"), False)
+    ctx = make_app()
+    ctx.controller._discover = lambda _c: DiscoveryResult([inst], ["ADB access is disabled"], ["x.conf"])
+    tab = ctx.window.emulator_page.instances_tab
+    tab.scan_btn.click()
+    qtbot.waitUntil(lambda: tab.table.rowCount() == 1, timeout=3000)
+    assert tab.table.item(0, 3).text() == "127.0.0.1:5555"
+    assert tab.table.item(0, 4).text() == "Disabled"
+    assert not tab.warn_label.isHidden()
+    tab.table.selectRow(0)
+    assert tab.connect_btn.isEnabled() and tab.launch_btn.isEnabled()
+
+
+def test_settings_phase2_fields_persist(make_app):
+    ctx = make_app()
+    page = ctx.window.settings_page
+    page.auto_reconnect_check.setChecked(False)
+    page.bs_conf_edit.setText("D:/BlueStacks/bluestacks.conf")
+    assert page.save()
+    saved = ctx.config_manager.load().config
+    assert saved.auto_reconnect_enabled is False
+    assert saved.bluestacks_conf_path == "D:/BlueStacks/bluestacks.conf"

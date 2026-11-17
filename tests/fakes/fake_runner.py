@@ -32,6 +32,11 @@ GETPROP_OUTPUT = (
     "[ro.kernel.qemu]: [1]\n"
 )
 WM_SIZE_OUTPUT = "Physical size: 1080x2400\n"
+TARGET_PKG = "com.example.target"
+PACKAGES_3RD = f"package:{TARGET_PKG}\npackage:com.android.chrome\npackage:org.example.notes\n"
+PACKAGES_ALL = PACKAGES_3RD + "package:android\npackage:com.android.settings\n"
+RESOLVE_OUTPUT = f"priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false\n{TARGET_PKG}/.MainActivity\n"
+AM_START_OUTPUT = f"Starting: Intent {{ cmp={TARGET_PKG}/.MainActivity }}\n"
 
 
 class FakeRunner:
@@ -74,4 +79,10 @@ def standard_runner(devices_output: str = DEVICES_ONE, delay: float = 0.0) -> Fa
     r.set(["shell", "wm", "size"], WM_SIZE_OUTPUT)
     r.set(["kill-server"], "")
     r.set(["start-server"], "* daemon started successfully\n")
+    r.set(["shell", "pm", "list", "packages", "-3"], PACKAGES_3RD)
+    r.set(["shell", "pm", "list", "packages"], PACKAGES_ALL)
+    r.set(["shell", "cmd", "package", "resolve-activity", "--brief", TARGET_PKG], RESOLVE_OUTPUT)
+    r.set(["shell", "am", "start", "-n", f"{TARGET_PKG}/.MainActivity"], AM_START_OUTPUT)
+    r.set(["shell", "pidof", TARGET_PKG], "4242\n")
+    r.set(["shell", "am", "force-stop", TARGET_PKG], "")
     return r

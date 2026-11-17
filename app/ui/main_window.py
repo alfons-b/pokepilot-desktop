@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from app import __app_name__, __version__
+from app.core.app_controller import AppController
 from app.core.config import ConfigManager
 from app.core.device_controller import AdbStatus, DeviceController
 from app.core.task_runner import TaskRunner
@@ -50,11 +51,13 @@ class MainWindow(QMainWindow):
         runner: TaskRunner,
         config_manager: ConfigManager,
         log_handler: QtLogHandler,
+        apps: AppController | None = None,
     ) -> None:
         super().__init__()
         self.controller = controller
         self.runner = runner
         self.config_manager = config_manager
+        self.apps = apps or AppController(controller, runner, self)
         self.setWindowTitle(f"{__app_name__} {__version__}")
         self.resize(1200, 780)
         self.setMinimumSize(960, 640)
@@ -81,7 +84,7 @@ class MainWindow(QMainWindow):
         # Pages
         self.stack = QStackedWidget()
         self.dashboard_page = DashboardPage(controller, log_handler)
-        self.emulator_page = EmulatorPage(controller)
+        self.emulator_page = EmulatorPage(controller, self.apps)
         self.activity_page = ActivityPage(log_handler)
         self.settings_page = SettingsPage(controller, config_manager)
         self.pages: dict[str, QWidget] = {
@@ -124,15 +127,26 @@ class MainWindow(QMainWindow):
         controller.adb_status_changed.connect(self._update_adb_label)
         controller.selected_device_changed.connect(self._update_device_label)
         controller.devices_changed.connect(self._update_device_label)
-        controller.busy_changed.connect(self.busy_bar.setVisible)
-        controller.operation_failed.connect(lambda op, msg: sb.showMessage(f"{op} failed: {msg}", 10000))
-        controller.operation_succeeded.connect(lambda op, msg: sb.showMessage(f"{op}: {msg}", 6000))
+        controller.busy_changed.connect(lambda _b: self._update_busy())
+        self.apps.busy_changed.connect(lambda _b: self._update_busy())
+        self.apps.operation_failed.connect(lambda op, msg: self._flash(f"{op} failed: {msg}", 10000))
+        self.apps.operation_succeeded.connect(lambda op, msg: self._flash(f"{op}: {msg}", 6000))
+        controller.operation_failed.connect(lambda op, msg: self._flash(f"{op} failed: {msg}", 10000))
+        controller.operation_succeeded.connect(lambda op, msg: self._flash(f"{op}: {msg}", 6000))
         self._update_adb_label(*controller.adb_status)
         self._update_device_label()
 
         geometry = controller.config.window_geometry
         if geometry:
             self.restoreGeometry(QByteArray.fromBase64(geometry.encode("ascii")))
+
+    def _flash(self, text: str, msecs: int) -> None:
+        """Show a one-line, length-limited message (full text is in the page banner and log)."""
+        line = " ".join(text.split())
+        self.statusBar().showMessage(line if len(line) <= 110 else line[:107] + "...", msecs)
+
+    def _update_busy(self) -> None:
+        self.busy_bar.setVisible(self.controller.is_busy or self.apps.is_busy)
 
     def navigate_to(self, name: str) -> None:
         self.nav.setCurrentRow(NAV_ITEMS.index(name))

@@ -83,6 +83,13 @@ QLabel#Banner[level="ok"] { background: #dcfce7; color: #166534; }
 QLabel#Banner[level="error"] { background: #fee2e2; color: #991b1b; }
 QLabel#Banner[level="info"] { background: #dbeafe; color: #1e40af; }
 QLabel#Banner[level="warn"] { background: #fef3c7; color: #92400e; }
+QTabWidget::pane { border: none; }
+QTabBar::tab {
+    background: transparent; color: #6b7280; padding: 8px 16px; margin-right: 4px;
+    border-bottom: 2px solid transparent; font-weight: 600;
+}
+QTabBar::tab:hover { color: #111827; }
+QTabBar::tab:selected { color: #2563eb; border-bottom: 2px solid #3b82f6; }
 QStatusBar { background: white; border-top: 1px solid #e5e7eb; }
 """
 
