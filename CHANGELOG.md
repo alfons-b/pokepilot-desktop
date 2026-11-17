@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.0] - 2026-11-17 - Phase 6: location manager
+
+### Added
+- **Location Manager** page:
+  - **Presets**: add, edit, delete, favorites, search across name and notes (LIKE wildcards escaped),
+    "Copy Coordinates" for pasting into PGSharp, JSON import/export. Import accepts PokePilot's format or a
+    plain list with `lat`/`lng` keys, and reports skipped entries.
+  - **GPX Files**: import (validated, then copied to `data/gpx`), rename, re-validate, export a copy, delete,
+    open folder. Missing files are flagged.
+- Coordinate parsing accepts `lat, lon`, `lat; lon`, `(lat, lon)` and `lat lon`, with range, NaN and infinity
+  checks.
+- GPX parser (GPX 1.0/1.1, namespace-agnostic): counts tracks, routes, waypoints and points, computes distance
+  (haversine) and bounds. Rejects DOCTYPE/ENTITY declarations (XXE, "billion laughs"), files over 20 MB,
+  malformed XML and invalid coordinates.
+- Locations and GPX metadata are stored in SQLite (`location_presets`, `gpx_files`).
+- 18 new tests (294 total).
+
+### Notes
+- As specified, PokePilot only manages location files and settings. Locations are applied through PGSharp's own
+  teleport and GPX screens.
+
 ## [0.5.0] - 2026-11-17 - Phase 5: automation engine
 
 ### Added

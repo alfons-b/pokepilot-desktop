@@ -44,6 +44,16 @@ access is enabled, and whether it is currently connected. **Connect** runs `adb 
 Instance** starts `HD-Player.exe --instance <id>`. **Use as Default** stores that instance as the
 emulator launcher (Settings) and as the preferred device.
 
+## Location Manager
+**Presets**: store named coordinates. Type or paste coordinates as `latitude, longitude`. Search filters by name
+and notes. Favorites are listed first. **Copy Coordinates** puts `lat, lon` on the clipboard for PGSharp's
+teleport field. Import/Export uses JSON (see the CHANGELOG for accepted formats).
+
+**GPX Files**: **Import GPX** validates the file (XML structure, coordinates, size, no DOCTYPE/ENTITY) before
+copying it to `data\gpx\`. The table shows points, tracks/routes and distance. To use a route, load the file
+through PGSharp's Custom GPX screen. You may need to copy it to the emulator first; BlueStacks has a "Media
+Manager / Import files" feature for this.
+
 ## Settings
 Changes take effect when you press **Save Settings**. **Revert** discards unsaved edits. Closing the
 window with unsaved edits asks for confirmation.

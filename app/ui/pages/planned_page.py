@@ -22,10 +22,4 @@ class PlannedPage(Page):
 
 
 PLANNED_PAGES: dict[str, tuple[int, str, list[str]]] = {
-    "Location Manager": (
-        6,
-        "Manage location presets and GPX files.",
-        ["Location presets with favourites and search", "Coordinate validation",
-         "GPX validation and file management", "JSON import / export"],
-    ),
 }

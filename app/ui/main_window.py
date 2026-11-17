@@ -26,7 +26,9 @@ from app.core.config import ConfigManager
 from app.core.device_controller import AdbStatus, DeviceController
 from app.core.task_runner import TaskRunner
 from app.database.db import Database
+from app.locations.repository import GpxRepository, LocationRepository
 from app.monitoring.history import ActivityLogRepository, SessionHistoryRepository
+from app.paths import data_dir
 from app.pgsharp.controller import PgsharpController
 from app.screen.mirror_controller import MirrorController
 from app.ui.log_bridge import QtLogHandler
@@ -34,6 +36,7 @@ from app.ui.pages.activity_page import ActivityPage
 from app.ui.pages.automation_page import AutomationPage
 from app.ui.pages.dashboard_page import DashboardPage
 from app.ui.pages.emulator_page import EmulatorPage
+from app.ui.pages.location_page import LocationPage
 from app.ui.pages.pgsharp_page import PgsharpPage
 from app.ui.pages.planned_page import PLANNED_PAGES, PlannedPage
 from app.ui.pages.screen_page import ScreenPage
@@ -108,6 +111,7 @@ class MainWindow(QMainWindow):
         self.screen_page = ScreenPage(controller, self.mirror)
         self.pgsharp_page = PgsharpPage(self.pgsharp, self.apps)
         self.automation_page = AutomationPage(self.sessions, self.pgsharp)
+        self.location_page = LocationPage(LocationRepository(self.db), GpxRepository(self.db, data_dir() / "gpx"))
         self.dashboard_page.attach_sessions(self.sessions)
         self.sessions.confirmation_requested.connect(self._ask_confirmation)
         self.dashboard_page.attach_pgsharp(self.apps, self.pgsharp)
@@ -120,6 +124,7 @@ class MainWindow(QMainWindow):
             "Screen Monitor": self.screen_page,
             "PGSharp Controller": self.pgsharp_page,
             "Automation Manager": self.automation_page,
+            "Location Manager": self.location_page,
         }
         for name, (phase, summary, feats) in PLANNED_PAGES.items():
             self.pages.setdefault(name, PlannedPage(name, phase, summary, feats))

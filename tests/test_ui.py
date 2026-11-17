@@ -351,3 +351,48 @@ def test_automation_page_profile_flow(qtbot, make_app, monkeypatch, tmp_path):
     ctx.window.sessions.wait(3)
     assert ctx.window.dashboard_page.session_card.badge.text_value in ("Completed", "Idle")
     assert ctx.window.dashboard_page.start_btn.isEnabled()
+
+
+# ------------------------------------------------------------------ Phase 6
+def test_location_page_flow(qtbot, make_app, tmp_path):
+    from PySide6.QtGui import QGuiApplication
+
+    from app.locations.models import LocationPreset
+    from app.ui.pages.location_page import LocationDialog
+    from tests.test_locations import GPX11
+
+    ctx = make_app()
+    page = ctx.window.location_page
+    dlg = LocationDialog()
+    qtbot.addWidget(dlg)
+    dlg.name_edit.setText("Monas")
+    dlg.coord_edit.setText("-6.1754, 106.8272")
+    dlg._accept()
+    assert dlg.result_location and dlg.result_location.latitude == -6.1754
+    dlg2 = LocationDialog()
+    qtbot.addWidget(dlg2)
+    dlg2.name_edit.setText("x")
+    dlg2.coord_edit.setText("200, 0")
+    dlg2._accept()
+    assert dlg2.result_location is None and not dlg2.error.isHidden()
+
+    page._locs.add(LocationPreset("Monas", -6.1754, 106.8272))
+    page.refresh_presets()
+    page.loc_table.selectRow(0)
+    page.copy_btn.click()
+    assert QGuiApplication.clipboard().text() == "-6.175400, 106.827200"
+    out = tmp_path / "locs.json"
+    assert page.export_locations(str(out))
+    assert page.import_locations(str(out))
+    assert page.loc_table.rowCount() == 2
+    page.search_edit.setText("zzz")
+    assert page.loc_table.rowCount() == 0
+
+    gpx = tmp_path / "walk.gpx"
+    gpx.write_bytes(GPX11)
+    assert page.import_gpx(str(gpx))
+    assert page.gpx_table.rowCount() == 1 and page.gpx_table.item(0, 0).text() == "Park loop"
+    bad = tmp_path / "bad.gpx"
+    bad.write_text("<html/>")
+    assert page.import_gpx(str(bad)) is False
+    assert page.banner.property("level") == "error"
