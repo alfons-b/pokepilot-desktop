@@ -1,1 +1,1 @@
-"""Session monitoring (Phase 7)."""
+"""Session monitoring."""

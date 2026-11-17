@@ -5,7 +5,7 @@ Results distinguish three facts that must not be conflated:
 * the launch *command* was accepted by Android,
 * the app *process* is running (``pidof``),
 * the app's UI is in a particular state - this module never claims that;
-  UI verification is done separately (Phase 4).
+  UI verification is done separately (app.pgsharp).
 """
 
 from __future__ import annotations

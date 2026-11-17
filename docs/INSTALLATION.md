@@ -1,5 +1,11 @@
 # Installation Guide (Windows 10/11)
 
+## Option A: pre-built exe (no Python needed)
+Download the **PokePilot-windows-x64** artifact from the repository's GitHub **Actions** page (latest successful
+*Windows test & build* run), extract it, and run `PokePilot.exe`. See [BUILD.md](BUILD.md).
+
+## Option B: run from source
+
 ## 1. Install Python
 1. Download Python 3.12 or newer (64-bit) from <https://www.python.org/downloads/windows/>.
 2. In the installer, tick **Add python.exe to PATH**, then click *Install Now*.
@@ -32,5 +38,5 @@ Or double-click `run.bat`.
 
 ## Where files are stored
 * Development (running from source): `data\config.json` and `logs\pokepilot.log` inside the project.
-* Packaged `.exe` (Phase 8): `%LOCALAPPDATA%\PokePilot\`.
+* Packaged `.exe`: `%LOCALAPPDATA%\PokePilot\`.
 * Override either location with the environment variable `POKEPILOT_HOME`.

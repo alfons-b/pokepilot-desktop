@@ -1,0 +1,57 @@
+name: Windows test & build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-build.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt -r requirements-build.txt
+
+      - name: Lint
+        run: ruff check app tests --select E,F,W,B,UP,I --ignore E501
+
+      - name: Tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q -p no:cacheprovider
+
+      - name: Build PokePilot.exe
+        run: pyinstaller --noconfirm --clean pokepilot.spec
+
+      - name: Smoke test the packaged exe
+        shell: pwsh
+        run: |
+          $env:POKEPILOT_HOME = Join-Path $env:RUNNER_TEMP "pokepilot-smoke"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $p = Start-Process -FilePath "dist\PokePilot\PokePilot.exe" -ArgumentList "--smoke-test" -Wait -PassThru
+          Get-Content (Join-Path $env:POKEPILOT_HOME "logs\pokepilot.log")
+          if ($p.ExitCode -ne 0) { throw "Smoke test failed with exit code $($p.ExitCode)" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PokePilot-windows-x64
+          path: dist/PokePilot
+          retention-days: 30

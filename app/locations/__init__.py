@@ -1,1 +1,1 @@
-"""Location presets and GPX file management (Phase 6)."""
+"""Location presets and GPX file management."""

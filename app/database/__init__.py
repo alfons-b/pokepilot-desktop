@@ -1,1 +1,1 @@
-"""SQLite persistence layer (Phase 7)."""
+"""SQLite persistence layer."""

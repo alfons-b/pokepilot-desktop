@@ -1,1 +1,1 @@
-"""Screen mirroring via scrcpy (Phase 3)."""
+"""Screen mirroring via scrcpy."""

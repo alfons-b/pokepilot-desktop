@@ -39,7 +39,7 @@ class DashboardPage(Page):
             grid.addWidget(card, i // 3, i % 3)
         self.body.addLayout(grid)
 
-        # Session controls - wired up in Phase 5; disabled rather than fake.
+        # Session controls: enabled by attach_sessions() according to the session state.
         controls = QGroupBox("Session Controls")
         self.start_btn = make_button("Start", "primary", _SESSION_TOOLTIP)
         self.pause_btn = make_button("Pause", tooltip=_SESSION_TOOLTIP)

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from app import __app_name__, __version__
@@ -18,7 +19,7 @@ from app.core.task_runner import TaskRunner
 from app.database.db import Database
 from app.monitoring.history import SessionHistoryRepository
 from app.monitoring.repositories import SettingsRepository
-from app.paths import config_path, data_dir, logs_dir
+from app.paths import assets_dir, config_path, data_dir, logs_dir
 from app.ui.log_bridge import QtLogHandler
 from app.ui.main_window import MainWindow
 from app.ui.theme import build_stylesheet
@@ -85,12 +86,19 @@ def _start(ctx: AppContext) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    app = QApplication(argv if argv is not None else sys.argv)
+    argv = list(argv if argv is not None else sys.argv)
+    smoke_test = "--smoke-test" in argv  # start everything, then exit: used to verify packaged builds
+    if smoke_test:
+        argv.remove("--smoke-test")
+    app = QApplication(argv)
     app.setApplicationName(__app_name__)
     app.setApplicationVersion(__version__)
     app.setOrganizationName("PokePilot")
     app.setStyle("Fusion")
     app.setStyleSheet(build_stylesheet())
+    icon = assets_dir() / "icons" / "app.png"
+    if icon.is_file():
+        app.setWindowIcon(QIcon(str(icon)))
 
     def excepthook(exc_type, exc, tb) -> None:  # noqa: ANN001
         logging.getLogger("app").critical("Unhandled exception", exc_info=(exc_type, exc, tb))
@@ -100,8 +108,15 @@ def main(argv: list[str] | None = None) -> int:
 
     ctx = build_app()
     ctx.window.show()
-    QTimer.singleShot(0, lambda: _start(ctx))
-    return app.exec()
+    if smoke_test:
+        logger.info("Smoke test: application started; exiting in 2 s.")
+        QTimer.singleShot(2000, ctx.window.close)
+        QTimer.singleShot(2500, app.quit)
+    else:
+        QTimer.singleShot(0, lambda: _start(ctx))
+    code = app.exec()
+    ctx.runner.wait_for_done(5000)
+    return code
 
 
 if __name__ == "__main__":

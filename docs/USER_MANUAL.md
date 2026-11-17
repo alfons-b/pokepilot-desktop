@@ -1,11 +1,15 @@
-# User Manual (v0.2.0, Phase 2)
+# User Manual (v1.0.0)
 
 ## Dashboard
 * **ADB**: whether PokePilot could run adb. *Connected* means the last `adb devices` call succeeded.
 * **Emulator / Device**: state of the *selected* device (Online, Offline, Unauthorized, Disconnected).
-* **PGSharp / Screen Mirroring / Automation Session**: show *Not checked*, *Not running* or *Idle*
-  until their modules arrive. PokePilot never shows a state it has not verified.
-* **Session Controls**: disabled until the automation engine (Phase 5).
+* **PGSharp**: the target app's process state (after a check) and the last verified screen.
+* **Screen Mirroring**: scrcpy state.
+* **Automation Session**: current profile, state, current action and last error. PokePilot never shows a
+  state it has not checked: *Not checked* means exactly that.
+* **Session Controls**: run the profile selected in Automation Manager (see
+  [AUTOMATION_PROFILES.md](AUTOMATION_PROFILES.md)). **Stop** finishes the current action first;
+  **Emergency Stop** interrupts immediately.
 * **Recent Activity**: the latest 100 log messages.
 
 ## Emulator Manager
@@ -43,6 +47,19 @@ preferred `host:port` device is missing or offline. Devices named `emulator-NNNN
 access is enabled, and whether it is currently connected. **Connect** runs `adb connect`. **Launch
 Instance** starts `HD-Player.exe --instance <id>`. **Use as Default** stores that instance as the
 emulator launcher (Settings) and as the preferred device.
+
+## Screen Monitor
+Start, stop or restart scrcpy for the selected device and set its options. Control the emulator with your mouse
+and keyboard directly in the scrcpy window. **Capture Screenshot** saves a PNG. Details:
+[SCRCPY_SETUP.md](SCRCPY_SETUP.md).
+
+## PGSharp Controller
+Launch PGSharp, then calibrate tap targets (**UI Elements**), reference screens (**Screen States**) and
+**Features** on a captured screenshot. **Verify Screen** shows which calibrated screen is currently open.
+Details: [PGSHARP_SETUP.md](PGSHARP_SETUP.md).
+
+## Automation Manager
+Create profiles of ordered actions and run them. Details: [AUTOMATION_PROFILES.md](AUTOMATION_PROFILES.md).
 
 ## Location Manager
 **Presets**: store named coordinates. Type or paste coordinates as `latitude, longitude`. Search filters by name

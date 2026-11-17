@@ -6,7 +6,7 @@ PokePilot works with **any** Android environment that ADB can reach. It does not
 * ADB access enabled in the emulator. Many emulators have a setting such as
   *Settings > Advanced > Android Debug Bridge*. In AVD and Genymotion it is always on.
 * The emulator reaches the `device` state in `adb devices`.
-* Android 7.0 or newer is recommended. scrcpy (Phase 3) requires Android 5.0 or newer.
+* Android 7.0 or newer is recommended. scrcpy requires Android 5.0 or newer.
 
 ## How emulators appear in ADB
 | Kind | Serial shown | What to do |

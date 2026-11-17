@@ -34,7 +34,7 @@ PokePilot remembers your preferred device and reconnects it automatically (Setti
 Detection > *Automatically reconnect*).
 
 ## Display settings for later phases
-Screen calibration (Phase 4) records coordinates relative to the resolution. To avoid re-calibrating,
+Screen calibration (PGSharp Controller) records coordinates relative to the resolution. To avoid re-calibrating,
 keep BlueStacks' **Display resolution** and **orientation** unchanged after you calibrate.
 
 ## Notes

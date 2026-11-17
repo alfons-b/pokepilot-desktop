@@ -1,1 +1,1 @@
-"""PGSharp user-facing UI integration layer (Phase 4)."""
+"""PGSharp user-facing UI integration layer."""

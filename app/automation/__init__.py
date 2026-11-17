@@ -1,1 +1,1 @@
-"""Profile-based UI automation engine (Phase 5)."""
+"""Profile-based UI automation engine."""

@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0] - 2026-11-17 - Phase 8: packaging, CI and documentation
+
+### Added
+- PyInstaller one-folder build (`pokepilot.spec`) with an app icon; excludes unused Qt modules.
+- `build_windows.ps1`: venv, dependencies, tests, build, zip.
+- `--smoke-test` flag: starts the full application, builds every page, opens the database and exits. Used to
+  verify packaged builds.
+- GitHub Actions workflow `windows.yml` on `windows-latest`: lint, full test suite, exe build, smoke test of the
+  packaged exe, and upload of the build artifact.
+- `docs/BUILD.md` and `docs/TESTING.md` (requirement-to-test coverage map and a manual acceptance checklist).
+  README, installation guide and user manual completed.
+
 ## [0.7.0] - 2026-11-17 - Phase 7: monitoring, database and logging
 
 ### Added

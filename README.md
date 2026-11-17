@@ -1,116 +1,108 @@
 # PokePilot Desktop
 
-A Windows desktop controller for an **existing** Android emulator, built with Python and PySide6.
-PokePilot talks to the emulator only through **ADB** (and, from Phase 3, **scrcpy**). It does not
-include or modify an emulator, does not modify any APK, and does not touch game network traffic.
+A Windows desktop controller for an **existing** Android emulator (for example BlueStacks) running PGSharp and
+Pokémon GO. It is built with Python and PySide6, talks to the emulator only through **ADB**, and mirrors the
+screen with **scrcpy**.
 
-> **Status: Phase 7 of 8 complete (v0.7.0).** All modules are implemented: device management, BlueStacks
-> support, app launcher, scrcpy mirroring, PGSharp calibration, automation engine, location manager and
-> monitoring with an SQLite history. The other modules are listed in the app as scheduled for later phases. See
-> [CHANGELOG.md](CHANGELOG.md).
+PokePilot does **not** include or modify an emulator, does not modify or inspect any APK, does not touch game
+network traffic or private APIs, and has no stealth or anti-detection features. Automation works only through
+on-screen, user-facing UI actions that you configure. Using PGSharp may violate Pokémon GO's Terms of Service;
+that risk to your account is yours to assess.
 
-## What works today
+**Version 1.0.0**: all eight development phases are complete. See [CHANGELOG.md](CHANGELOG.md).
 
-| Area | Working in v0.1.0 |
+## Features
+| Section | What it does |
 |---|---|
-| Navigation | Sidebar with all 8 sections, status bar showing ADB and device state |
-| Dashboard | Live ADB and device status, recent activity log. Session buttons are present but disabled until Phase 5 |
-| Emulator Manager: Devices | Device scan (`adb devices -l`), multi-device table, device selection, TCP/IP connect, manual and automatic reconnection, restart ADB server, launch your emulator, read Android version, API level and screen resolution |
-| Emulator Manager: Applications | List installed apps, choose a target app (for example your PGSharp install), launch it and confirm its process is running, check running state, force stop |
+| Dashboard | Live ADB, device, PGSharp, mirroring and session status; Start, Pause, Resume, Stop and Emergency Stop for the current profile; recent activity |
+| Emulator Manager: Devices | `adb devices` scan, multi-device selection, TCP/IP connect, automatic and manual reconnection, restart ADB server, launch emulator, device info (Android version, API level, resolution) |
+| Emulator Manager: Applications | List installed apps, choose your PGSharp app as the target, launch it (process verified), check it, force-stop it |
 | Emulator Manager: Emulator Instances | Finds BlueStacks 5 instances and their ADB ports in `bluestacks.conf`; connect, launch or set as default |
-| Screen Monitor | scrcpy mirroring with mouse and keyboard control, options (size, FPS, bitrate, fullscreen, view-only), crash auto-restart, screenshots |
-| PGSharp Controller | Launch and check PGSharp; calibrate tap targets and screen states on a screenshot; map and test features; layout change warnings |
-| Automation Manager | Profiles of ordered actions (12 types), validation, import/export; sessions with pause, resume, stop and emergency stop, verification-based results and connection recovery |
-| Location Manager | Location presets (favorites, search, copy coordinates, JSON import/export) and validated GPX file management |
-| Settings | ADB path (browse / auto-detect / test), command timeout, auto-refresh, emulator executable and arguments, scrcpy path (stored for Phase 3), log level |
-| Activity Monitor | Live status (ADB, emulator, PGSharp, Pokémon GO, scrcpy, session, last verification, last error), live log, session history, stored warnings and errors |
-| Reliability | All ADB work runs on background threads; JSON config is validated, saved atomically, and backed up and reset if it is corrupted |
+| Screen Monitor | scrcpy mirroring with mouse and keyboard control; size, FPS, bitrate, fullscreen and view-only options; crash auto-restart; screenshots |
+| PGSharp Controller | Calibrate tap targets and screen states on a screenshot; feature registry (availability set by you); test features; layout change warnings |
+| Automation Manager | Profiles of ordered actions (12 types) with timeouts, expected states and error policies; JSON import/export; sessions with verification-based results and connection recovery |
+| Location Manager | Location presets (favorites, search, copy coordinates, JSON import/export); validated GPX file management |
+| Activity Monitor | Live status, live log, session history, stored warnings and errors |
+| Settings | Paths to adb, emulator and scrcpy (auto-detect and test), timeouts, auto-refresh and auto-reconnect, log level |
 
-## Requirements
+## Quick start (Windows)
 
-* Windows 10 or 11, 64-bit
-* Python **3.12 or newer**: <https://www.python.org/downloads/>. Tick *"Add python.exe to PATH"* in the installer.
-* An Android emulator you already have installed, with ADB access. See
-  [docs/EMULATOR_COMPATIBILITY.md](docs/EMULATOR_COMPATIBILITY.md).
-* An `adb.exe`: either Google's *SDK Platform-Tools* or the copy bundled with your emulator. See
-  [docs/ADB_SETUP.md](docs/ADB_SETUP.md).
+### A. Use the pre-built exe
+1. On GitHub, open **Actions > Windows test & build**, pick the latest green run, and download the
+   **PokePilot-windows-x64** artifact.
+2. Extract it and run `PokePilot.exe`. Keep the whole folder together.
 
-## Run on Windows
-
-Open **PowerShell** in the project folder (the folder that contains `README.md`):
+### B. Run from source
+Install Python 3.12+ (tick *"Add python.exe to PATH"*), then in PowerShell in this folder:
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
 pip install -r requirements.txt
 python -m app
 ```
+Or double-click **`run.bat`**, which sets everything up on first use. If PowerShell blocks `Activate.ps1`, run
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
 
-If PowerShell refuses to run `Activate.ps1`, run this once:
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. Alternatively, double-click **`run.bat`**,
-which creates the virtual environment on first use and starts the app.
+### First-time setup (about 15 minutes)
+1. **BlueStacks**: Settings > Advanced > enable *Android Debug Bridge*. See [docs/BLUESTACKS_SETUP.md](docs/BLUESTACKS_SETUP.md).
+2. **Settings** in PokePilot: ADB **Auto-detect** then **Test**; scrcpy **Auto-detect** then **Test** (install scrcpy
+   first, see [docs/SCRCPY_SETUP.md](docs/SCRCPY_SETUP.md)).
+3. **Emulator Manager > Emulator Instances > Scan**, select your instance, then **Connect** and **Use as Default**.
+4. **Emulator Manager > Applications > Load Apps**, select PGSharp, then **Set as Target App**.
+5. **PGSharp Controller**: calibrate the buttons and screens you want to automate. See
+   [docs/PGSHARP_SETUP.md](docs/PGSHARP_SETUP.md).
+6. **Automation Manager**: build a profile and press **Start**. See [docs/AUTOMATION_PROFILES.md](docs/AUTOMATION_PROFILES.md).
 
-On first start PokePilot tries to auto-detect ADB. If it cannot find it, open **Settings**, then
-**Browse...** to your `adb.exe`, **Test**, and **Save Settings**.
-
-### First connection checklist (BlueStacks users: see [docs/BLUESTACKS_SETUP.md](docs/BLUESTACKS_SETUP.md))
-
-1. Start your emulator and wait for the Android home screen.
-2. Make sure ADB is enabled in the emulator's settings. Some emulators require this to be switched on.
-3. In PokePilot, open **Emulator Manager** and press **Refresh**.
-4. If no device appears, enter the emulator's ADB address under *Connect over TCP/IP*
-   (for example `127.0.0.1:5555`) and press **Connect**.
-5. Select the device in the table and press **Read Device Info** to confirm communication.
-
-## Running the tests
-
-```powershell
-pip install -r requirements-dev.txt
-python -m pytest
-```
-
-The tests do not need a real device. They use an in-memory fake ADB runner and, for integration
-tests, a fake `adb` executable (`tests/fakes/fake_adb.py`) run through real subprocesses.
-
-## Project layout
-
-```
-app/
-  core/         config, logging, background task runner, device controller
-  emulator/     ADB client, output parsers, ADB locator, device selection, emulator launcher
-  screen/       (Phase 3) scrcpy integration
-  pgsharp/      (Phase 4) PGSharp UI integration
-  automation/   (Phase 5) automation engine
-  locations/    (Phase 6) locations and GPX
-  monitoring/   (Phase 7) session monitoring
-  database/     (Phase 7) SQLite
-  ui/           PySide6 windows, pages and widgets (no business logic)
-tests/          pytest suite and fakes
-data/           config.json (created at runtime; dev mode)
-logs/           rotating log files (dev mode)
-assets/         icons
-docs/           guides
-```
-
-When packaged with PyInstaller (Phase 8), runtime data goes to `%LOCALAPPDATA%\PokePilot`.
-Set the `POKEPILOT_HOME` environment variable to override the location.
+## External dependencies
+| Dependency | Purpose | Installed by |
+|---|---|---|
+| Python 3.12+ | Runs PokePilot from source (not needed for the exe) | You |
+| PySide6 | GUI | `pip install -r requirements.txt` |
+| adb.exe | Device communication | You: Platform-Tools or the emulator's bundled adb ([guide](docs/ADB_SETUP.md)) |
+| scrcpy | Screen mirroring | You ([guide](docs/SCRCPY_SETUP.md)) |
+| pytest, pytest-qt, ruff | Development | `pip install -r requirements-dev.txt` |
+| PyInstaller | Packaging | `pip install -r requirements-build.txt` |
 
 ## Documentation
-
-* [Installation guide](docs/INSTALLATION.md)
+* [Installation](docs/INSTALLATION.md)
 * [ADB configuration](docs/ADB_SETUP.md)
 * [Existing emulator compatibility](docs/EMULATOR_COMPATIBILITY.md)
 * [BlueStacks setup](docs/BLUESTACKS_SETUP.md)
-* [User manual](docs/USER_MANUAL.md)
-* [Troubleshooting](docs/TROUBLESHOOTING.md)
 * [scrcpy setup](docs/SCRCPY_SETUP.md)
 * [PGSharp setup and calibration](docs/PGSHARP_SETUP.md)
-* [Automation profiles](docs/AUTOMATION_PROFILES.md), automation profiles and build instructions are added in their phases.
+* [User manual](docs/USER_MANUAL.md)
+* [Automation profiles](docs/AUTOMATION_PROFILES.md)
+* [Troubleshooting](docs/TROUBLESHOOTING.md)
+* [Build instructions](docs/BUILD.md)
+* [Testing](docs/TESTING.md)
 
-## Scope and responsible use
+## Development
+```powershell
+pip install -r requirements-dev.txt
+python -m pytest
+ruff check app tests
+```
+More than 300 tests run headless with simulated ADB, scrcpy and devices; no emulator or game account is needed.
+CI (`.github/workflows/windows.yml`) runs them on Windows and builds the exe.
 
-PokePilot automates only **user-facing UI** through standard Android tooling. It contains no
-stealth, anti-detection, APK modification, traffic manipulation or private-API features, and it
-never stores game account credentials. Third-party apps such as PGSharp may violate the game's
-terms of service. That risk to your account is yours to assess.
+## Project layout
+```
+app/
+  core/         configuration, logging, background task runner, device and app controllers
+  emulator/     ADB client and parsers, adb locator, device selection, reconnect policy,
+                BlueStacks discovery, app launcher, emulator launcher
+  screen/       scrcpy command builder and process supervisor, screenshots
+  pgsharp/      calibration layout, screen-region verification, UI driver, feature registry
+  automation/   action models and validation, state machine, engine, executor, session manager
+  locations/    location presets and GPX validation and storage
+  monitoring/   session history, activity logs, status monitor, repositories
+  database/     SQLite connection, schema and migrations
+  ui/           PySide6 pages and widgets (no business logic)
+tests/          pytest suite and fakes
+assets/         icons
+docs/           guides
+pokepilot.spec  PyInstaller build definition
+```
+Runtime data lives in `data/` and `logs/` next to the source, or in `%LOCALAPPDATA%\PokePilot` for the packaged
+exe. Override the location with `POKEPILOT_HOME`.
