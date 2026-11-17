@@ -4,8 +4,9 @@ A Windows desktop controller for an **existing** Android emulator, built with Py
 PokePilot talks to the emulator only through **ADB** (and, from Phase 3, **scrcpy**). It does not
 include or modify an emulator, does not modify any APK, and does not touch game network traffic.
 
-> **Status: Phase 6 of 8 complete (v0.6.0).** Device management, BlueStacks support, the app launcher,
-> scrcpy mirroring, PGSharp calibration, the automation engine and the location manager are working. The other modules are listed in the app as scheduled for later phases. See
+> **Status: Phase 7 of 8 complete (v0.7.0).** All modules are implemented: device management, BlueStacks
+> support, app launcher, scrcpy mirroring, PGSharp calibration, automation engine, location manager and
+> monitoring with an SQLite history. The other modules are listed in the app as scheduled for later phases. See
 > [CHANGELOG.md](CHANGELOG.md).
 
 ## What works today
@@ -22,7 +23,7 @@ include or modify an emulator, does not modify any APK, and does not touch game 
 | Automation Manager | Profiles of ordered actions (12 types), validation, import/export; sessions with pause, resume, stop and emergency stop, verification-based results and connection recovery |
 | Location Manager | Location presets (favorites, search, copy coordinates, JSON import/export) and validated GPX file management |
 | Settings | ADB path (browse / auto-detect / test), command timeout, auto-refresh, emulator executable and arguments, scrcpy path (stored for Phase 3), log level |
-| Activity Monitor | Live, filterable application log; opens the log folder |
+| Activity Monitor | Live status (ADB, emulator, PGSharp, Pokémon GO, scrcpy, session, last verification, last error), live log, session history, stored warnings and errors |
 | Reliability | All ADB work runs on background threads; JSON config is validated, saved atomically, and backed up and reset if it is corrupted |
 
 ## Requirements

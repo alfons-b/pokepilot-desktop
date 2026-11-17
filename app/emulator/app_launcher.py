@@ -135,5 +135,10 @@ def launch_app(
     return LaunchResult(package, activity, True, state, msg)
 
 
+def is_installed(client: AdbClient, serial: str, package: str) -> bool:
+    res = client.run(["shell", "pm", "path", validate_package_name(package)], serial=serial, check=False)
+    return res.returncode == 0 and res.stdout.strip().startswith("package:")
+
+
 def force_stop(client: AdbClient, serial: str, package: str) -> None:
     client.run(["shell", "am", "force-stop", validate_package_name(package)], serial=serial)

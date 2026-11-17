@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import sys
 from dataclasses import dataclass
+from datetime import datetime
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -16,6 +17,7 @@ from app.core.logging_setup import setup_logging
 from app.core.task_runner import TaskRunner
 from app.database.db import Database
 from app.monitoring.history import SessionHistoryRepository
+from app.monitoring.repositories import SettingsRepository
 from app.paths import config_path, data_dir, logs_dir
 from app.ui.log_bridge import QtLogHandler
 from app.ui.main_window import MainWindow
@@ -54,6 +56,13 @@ def build_app(controller_kwargs: dict | None = None) -> AppContext:
     runner = TaskRunner()
     controller = DeviceController(config_manager, load.config, runner, **(controller_kwargs or {}))
     db = Database(data_dir() / "pokepilot.db")
+    meta = SettingsRepository(db)
+    if meta.get("first_run_at") is None:
+        meta.set("first_run_at", datetime.now().isoformat(timespec="seconds"))
+    previous = meta.get("app_version")
+    if previous != __version__:
+        logger.info("Application version %s (previous run: %s)", __version__, previous or "none")
+        meta.set("app_version", __version__)
     interrupted = SessionHistoryRepository(db).mark_interrupted()
     if interrupted:
         logger.warning("%d session(s) from a previous run did not finish cleanly (marked INTERRUPTED).", interrupted)

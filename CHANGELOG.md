@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.0] - 2026-11-17 - Phase 7: monitoring, database and logging
+
+### Added
+- **Activity Monitor** rebuilt:
+  - live status for ADB, emulator/device, PGSharp process, Pokémon GO (when detectable), scrcpy, current
+    profile, session state, current action, session duration, last successful UI verification and last error;
+  - tabs for the live log, **Session History** (with the stored log of each session) and
+    **Stored Warnings & Errors**.
+- `StatusMonitor`: event-driven snapshot plus a 15 s background check of the PGSharp and Pokémon GO processes.
+  It reports "Not installed (or not detectable)" or "Unknown" instead of guessing.
+- WARNING and higher log records are stored in `activity_logs` (with a recursion guard; the table is pruned
+  at 50,000 rows).
+- Detected devices (`devices`), device info, and discovered emulator instances (`emulator_config`) are stored.
+- `app_settings` records the first run date and app version.
+- Startup recovers from a corrupted database (backed up, then reset, with a warning) and marks unfinished
+  sessions as INTERRUPTED.
+- 11 new tests (305 total).
+
+### Removed
+- Placeholder pages for future phases: all 8 sections are now implemented.
+
 ## [0.6.0] - 2026-11-17 - Phase 6: location manager
 
 ### Added

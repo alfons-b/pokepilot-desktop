@@ -396,3 +396,50 @@ def test_location_page_flow(qtbot, make_app, tmp_path):
     bad.write_text("<html/>")
     assert page.import_gpx(str(bad)) is False
     assert page.banner.property("level") == "error"
+
+
+# ------------------------------------------------------------------ Phase 7
+def test_activity_page_status_history_and_stored_logs(qtbot, make_app):
+    import logging as _logging
+
+    ctx = make_app(standard_runner(DEVICES_ONE))
+    page = ctx.window.activity_page
+    ctx.controller.refresh_devices()
+    qtbot.waitUntil(lambda: "emulator-5554" in page.status_labels["emulator"].text(), timeout=3000)
+    assert page.status_labels["session_state"].text() == "IDLE"
+    sid = ctx.window.history.start(None, "Morning", "emulator-5554", 3)
+    ctx.window.activity_logs.add("INFO", "automation", "first step", sid)
+    ctx.window.history.finish(sid, "COMPLETED", 2, 0, 1, "")
+    page.tabs.setCurrentIndex(1)
+    assert page.history_table.rowCount() == 1
+    assert page.history_table.item(0, 4).text() == "COMPLETED"
+    page.history_table.selectRow(0)
+    assert "first step" in page.session_log.toPlainText()
+    _logging.getLogger("app.some_module").error("stored failure")
+    page.tabs.setCurrentIndex(2)
+    assert "stored failure" in page.stored_view.toPlainText()
+    assert "stored failure" in page.status_labels["last_error"].text()
+
+
+def test_devices_recorded_in_database(qtbot, make_app):
+    ctx = make_app(standard_runner(DEVICES_ONE))
+    ctx.controller.refresh_devices()
+    qtbot.waitUntil(lambda: bool(ctx.window.db.query("SELECT * FROM devices")), timeout=3000)
+    assert ctx.window.db.query("SELECT serial FROM devices")[0]["serial"] == "emulator-5554"
+
+
+def test_corrupted_database_recovered_at_startup(make_app):
+    from app.paths import data_dir
+
+    (data_dir() / "pokepilot.db").write_bytes(b"garbage" * 500)
+    ctx = make_app()
+    assert any("database was damaged" in w for w in ctx.startup_warnings)
+    assert "automation_profiles" in ctx.window.db.table_names()
+
+
+def test_interrupted_session_marked_on_restart(make_app):
+    ctx = make_app()
+    ctx.window.history.start(None, "crashy", "emulator-5554", 1)  # never finished
+    ctx.window.close()
+    ctx2 = make_app(adb_path=None)
+    assert ctx2.window.history.recent()[0].result == "INTERRUPTED"

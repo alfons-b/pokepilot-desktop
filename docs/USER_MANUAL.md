@@ -59,5 +59,12 @@ Changes take effect when you press **Save Settings**. **Revert** discards unsave
 window with unsaved edits asks for confirmation.
 
 ## Activity Monitor
-A live log for the current run. Filter by level, clear the view, or open the log folder. Log files
-rotate at 2 MB and the last 5 files are kept.
+* **Live Status**: ADB, emulator/device, PGSharp process, Pokémon GO process (only when the official package
+  `com.nianticlabs.pokemongo` is installed and detectable), scrcpy, current profile, session state, current
+  action, session duration, last successful UI verification and last error. App processes are checked every
+  15 s while a device is online, or immediately with **Check Apps Now**.
+* **Live Log**: messages from this run. Filter by level, clear the view, or open the log folder. Log files
+  rotate at 2 MB and the last 5 files are kept.
+* **Session History**: every session with its result and action counts. Select a session to see its stored log.
+  The counts are PokePilot controller actions, **not** game statistics.
+* **Stored Warnings & Errors**: WARNING and higher messages kept in the database across restarts.
